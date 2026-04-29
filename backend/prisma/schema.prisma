@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  type        String   // "expense", "income", "transfer", "adjust"
+  amount      Float
+  account     String
+  toAccount   String?
+  category    String?
+  date        DateTime @default(now())
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Budget {
+  id        Int      @id @default(autoincrement())
+  category  String   @unique
+  limit     Float
+  month     String   @default("current") // could be a specific month "2026-05"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Note {
+  id        Int      @id @default(autoincrement())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
