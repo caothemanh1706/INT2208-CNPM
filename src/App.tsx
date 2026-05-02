@@ -3,20 +3,29 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { Statistics } from './components/statistics/Statistics';
 import { History } from './components/history/History';
+import { Settings } from './components/settings/Settings';
+import { LandingPage } from './components/landing/LandingPage';
+import { AuthModal } from './components/auth/AuthModal';
 import { Menu } from 'lucide-react';
 import { Button } from './components/ui/Button';
 import { AddRecordModal } from './components/dashboard/AddRecordModal';
 import { api } from './lib/api';
+import { auth } from './lib/auth';
 
 export function App() {
+  const [user, setUser] = useState<any>(auth.getUser());
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authView, setAuthView] = useState<'login' | 'signup'>('login');
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [activeView, setActiveView] = useState('history'); // Defaulting to history temporarily or based on last state? Let's keep it 'dashboard' by default. Wait, the user wants history. I'll stick to what was there.
+  const [activeView, setActiveView] = useState('dashboard');
   
   const [transactions, setTransactions] = useState<any[]>([]);
   const [balance, setBalance] = useState(0);
 
   const fetchData = async () => {
+    if (!user) return;
     try {
       const [txs, balRes] = await Promise.all([
         api.getTransactions(),
@@ -30,8 +39,46 @@ export function App() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
+
+  const handleAuthSuccess = (userData: any) => {
+    setUser(userData);
+    setIsAuthModalOpen(false);
+  };
+
+  const handleLogout = () => {
+    auth.logout();
+    setUser(null);
+    setActiveView('dashboard');
+  };
+
+  const openLogin = () => {
+    setAuthView('login');
+    setIsAuthModalOpen(true);
+  };
+
+  const openSignUp = () => {
+    setAuthView('signup');
+    setIsAuthModalOpen(true);
+  };
+
+  // Show landing page if not logged in
+  if (!user) {
+    return (
+      <>
+        <LandingPage onGetStarted={openSignUp} onLogin={openLogin} />
+        <AuthModal 
+          isOpen={isAuthModalOpen} 
+          onClose={() => setIsAuthModalOpen(false)}
+          onSuccess={handleAuthSuccess}
+          initialView={authView}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#eef5fb] font-sans">
@@ -42,12 +89,13 @@ export function App() {
         activeView={activeView}
         onChangeView={(view) => {
           setActiveView(view);
-          setIsSidebarOpen(false); // Close sidebar on mobile after navigating
+          setIsSidebarOpen(false); 
         }}
+        onLogout={handleLogout}
+        user={user}
       />
       
       <div className="flex-1 flex flex-col h-full relative overflow-y-auto">
-        {/* Mobile Header (hidden on large screens) */}
         <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-slate-100">
           <span className="font-bold text-xl text-slate-800">
             {activeView === 'dashboard' ? 'Trang chủ' : 
@@ -59,7 +107,7 @@ export function App() {
           </Button>
         </div>
 
-        <main className="flex-1 p-6 lg:p-10">
+        <main className="flex-1 p-3 lg:p-5 overflow-hidden">
           <div className="max-w-7xl mx-auto h-full">
             {activeView === 'dashboard' && (
               <Dashboard transactions={transactions} balance={balance} />
@@ -74,9 +122,7 @@ export function App() {
             )}
             
             {activeView === 'settings' && (
-              <div className="flex items-center justify-center h-full text-slate-500">
-                Tính năng đang được phát triển...
-              </div>
+              <Settings />
             )}
           </div>
         </main>

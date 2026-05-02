@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, ArrowDownUp, ShoppingBag, Coffee, UtensilsCrossed, Utensils, BookOpen, ShieldCheck, Fuel, Wallet, Gift, Award, PiggyBank } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
@@ -10,11 +10,13 @@ interface AddRecordModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  mode?: 'add' | 'edit' | 'copy';
+  initialData?: any;
 }
 
 type TabType = 'expense' | 'income' | 'transfer' | 'adjust';
 
-export function AddRecordModal({ isOpen, onClose, onSuccess }: AddRecordModalProps) {
+export function AddRecordModal({ isOpen, onClose, onSuccess, mode = 'add', initialData }: AddRecordModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('expense');
   const [loading, setLoading] = useState(false);
   
@@ -26,6 +28,33 @@ export function AddRecordModal({ isOpen, onClose, onSuccess }: AddRecordModalPro
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
 
+  useEffect(() => {
+    if (isOpen) {
+      if (initialData && (mode === 'edit' || mode === 'copy')) {
+        setActiveTab(initialData.type as TabType);
+        setAmount(initialData.amount.toString());
+        setAccount(initialData.account || 'Ví tiền mặt');
+        setToAccount(initialData.toAccount || '');
+        setCategory(initialData.category || '');
+        setDescription(initialData.description || '');
+        
+        // Format date to YYYY-MM-DDThh:mm for datetime-local input
+        const d = new Date(initialData.date);
+        const localDate = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        setDate(localDate);
+      } else {
+        // Reset if adding new
+        setActiveTab('expense');
+        setAmount('');
+        setAccount('Ví tiền mặt');
+        setToAccount('');
+        setCategory('');
+        setDescription('');
+        setDate(new Date().toISOString().slice(0, 16));
+      }
+    }
+  }, [isOpen, initialData, mode]);
+
   if (!isOpen) return null;
 
   const handleSave = async () => {
@@ -34,24 +63,24 @@ export function AddRecordModal({ isOpen, onClose, onSuccess }: AddRecordModalPro
     
     setLoading(true);
     try {
-      // For adjust balance, we can store the new actual balance as the amount
-      // Or we calculate difference. For simplicity, we just store the amount.
-      await api.createTransaction({
+      const data = {
         type: activeTab,
-        amount: parseFloat(amount.replace(/,/g, '')),
+        amount: parseFloat(amount.toString().replace(/,/g, '')),
         account,
         toAccount: activeTab === 'transfer' ? toAccount : undefined,
         category: activeTab === 'transfer' ? 'Chuyển khoản' : (activeTab === 'adjust' ? 'Điều chỉnh' : category),
         description,
         date: new Date(date).toISOString()
-      });
+      };
+
+      if (mode === 'edit' && initialData) {
+        await api.updateTransaction(initialData.id, data);
+      } else {
+        await api.createTransaction(data);
+      }
+
       if (onSuccess) onSuccess();
       onClose();
-      // Reset form
-      setAmount('');
-      setCategory('');
-      setDescription('');
-      setToAccount('');
     } catch (error) {
       console.error(error);
       alert('Đã xảy ra lỗi khi lưu ghi chép');
@@ -60,13 +89,15 @@ export function AddRecordModal({ isOpen, onClose, onSuccess }: AddRecordModalPro
     }
   };
 
+  const title = mode === 'edit' ? 'Chỉnh sửa ghi chép' : mode === 'copy' ? 'Sao chép ghi chép' : 'Thêm ghi chép';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
       
       <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-xl flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between p-5 pb-4">
-          <h2 className="text-xl font-bold text-slate-800">Thêm ghi chép</h2>
+          <h2 className="text-xl font-bold text-slate-800">{title}</h2>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-slate-500">
             <X className="w-5 h-5" />
           </Button>

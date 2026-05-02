@@ -4,7 +4,8 @@ import {
   BarChart3, 
   Settings,
   ChevronDown,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
@@ -15,6 +16,8 @@ interface SidebarProps {
   onOpenAddRecord?: () => void;
   activeView: string;
   onChangeView: (view: string) => void;
+  onLogout?: () => void;
+  user?: any;
 }
 
 const navItems = [
@@ -24,7 +27,7 @@ const navItems = [
   { id: 'settings', name: 'Cài đặt', icon: Settings },
 ];
 
-export function Sidebar({ isOpen, onClose, onOpenAddRecord, activeView, onChangeView }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, onOpenAddRecord, activeView, onChangeView, onLogout, user }: SidebarProps) {
   return (
     <>
       {/* Mobile backdrop */}
@@ -47,13 +50,15 @@ export function Sidebar({ isOpen, onClose, onOpenAddRecord, activeView, onChange
           <div className="flex items-center gap-4">
             <div className="w-[52px] h-[52px] rounded-full overflow-hidden bg-teal-400 border-[3px] border-white shadow-sm flex items-center justify-center">
               <img 
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jocelyn&backgroundColor=transparent&top=longHairStraight&clothes=blazerShirt" 
-                alt="Minh Hoa" 
+                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username || 'Jocelyn'}&backgroundColor=transparent&top=longHairStraight&clothes=blazerShirt`} 
+                alt={user?.username || 'User'} 
                 className="w-full h-full object-cover rounded-full"
               />
             </div>
             <div>
-              <p className="font-medium text-[15px] text-slate-800 leading-tight">Minh Hoa</p>
+              <p className="font-medium text-[15px] text-slate-800 leading-tight">
+                {user?.username || user?.email?.split('@')[0] || 'User'}
+              </p>
             </div>
           </div>
           <Button variant="ghost" size="icon" className="lg:hidden absolute top-2 right-2 text-slate-500" onClick={onClose}>
@@ -97,6 +102,16 @@ export function Sidebar({ isOpen, onClose, onOpenAddRecord, activeView, onChange
               );
             })}
           </nav>
+        </div>
+
+        <div className="p-4 border-t border-slate-100">
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-[13px] font-medium text-red-600 hover:bg-red-50 transition-all text-left group"
+          >
+            <LogOut className="w-4 h-4 text-red-500 group-hover:text-red-600" />
+            Đăng xuất
+          </button>
         </div>
       </aside>
     </>

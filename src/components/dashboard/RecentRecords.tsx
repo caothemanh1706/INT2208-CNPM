@@ -1,15 +1,14 @@
 import { Card } from '../ui/Card';
-import { recentRecords } from '../../data/dummy'; // fallback
 
 export function RecentRecords({ transactions = [] }: { transactions?: any[] }) {
-  // If no transactions from DB, fallback to dummy for visual purposes while testing
-  const displayRecords = transactions.length > 0 ? transactions : recentRecords;
+
+  const displayRecords = transactions.slice(0, 10);
 
   return (
-    <Card className="p-6 rounded-2xl shadow-sm border-slate-100 flex-1">
-      <h2 className="text-lg font-bold text-slate-800 mb-6">Ghi chép gần đây</h2>
+    <Card className="p-4 rounded-xl shadow-sm border-slate-100 flex-1 flex flex-col min-h-0">
+      <h2 className="text-[17px] font-bold text-slate-800 mb-4">Ghi chép gần đây</h2>
       
-      <div className="border border-slate-200 rounded-xl p-2 h-[450px] overflow-y-auto custom-scrollbar">
+      <div className="border border-slate-200 rounded-xl p-2 flex-1 overflow-y-auto custom-scrollbar min-h-0">
         <div className="flex flex-col gap-1">
           {displayRecords.map((record: any, index) => {
             const isIncome = record.type === 'income';

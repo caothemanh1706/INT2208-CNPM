@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Card } from '../ui/Card';
 import { api } from '../../lib/api';
 import { Search, Trash2, Edit3, Copy } from 'lucide-react';
+import { AddRecordModal } from '../dashboard/AddRecordModal';
 
 interface HistoryProps {
   transactions: any[];
@@ -10,14 +11,37 @@ interface HistoryProps {
 
 export function History({ transactions, onTransactionsChange }: HistoryProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [reportFilter, setReportFilter] = useState('Tất cả');
+  
+  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState<'add' | 'edit' | 'copy'>('add');
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+
+  const handleEdit = (item: any) => {
+    setSelectedTransaction(item);
+    setActionModalMode('edit');
+    setIsActionModalOpen(true);
+  };
+
+  const handleCopy = (item: any) => {
+    setSelectedTransaction(item);
+    setActionModalMode('copy');
+    setIsActionModalOpen(true);
+  };
   
   // Basic filtering (can be expanded later for time/category dropdowns)
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => 
-      (t.category?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (t.description?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-    );
-  }, [transactions, searchTerm]);
+    return transactions.filter(t => {
+      const matchesSearch = (t.category?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                            (t.description?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+      
+      let matchesReport = true;
+      if (reportFilter === 'Thu tiền') matchesReport = t.type === 'income';
+      else if (reportFilter === 'Chi tiền') matchesReport = t.type === 'expense';
+
+      return matchesSearch && matchesReport;
+    });
+  }, [transactions, searchTerm, reportFilter]);
 
   // Calculate totals for summary line
   const totalIncome = filteredTransactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
@@ -91,10 +115,14 @@ export function History({ transactions, onTransactionsChange }: HistoryProps) {
 
           <div className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2 bg-white text-sm">
             <span className="text-slate-500">Báo cáo:</span>
-            <select className="bg-transparent font-medium text-slate-700 focus:outline-none cursor-pointer pr-1">
-              <option>Tất cả</option>
-              <option>Thu tiền</option>
-              <option>Chi tiền</option>
+            <select 
+              className="bg-transparent font-medium text-slate-700 focus:outline-none cursor-pointer pr-1"
+              value={reportFilter}
+              onChange={(e) => setReportFilter(e.target.value)}
+            >
+              <option value="Tất cả">Tất cả</option>
+              <option value="Thu tiền">Thu tiền</option>
+              <option value="Chi tiền">Chi tiền</option>
             </select>
           </div>
         </div>
@@ -168,10 +196,10 @@ export function History({ transactions, onTransactionsChange }: HistoryProps) {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors" title="Sao chép">
+                            <button onClick={() => handleCopy(item)} className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-md transition-colors" title="Sao chép">
                               <Copy className="w-4 h-4" />
                             </button>
-                            <button className="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-md transition-colors" title="Sửa">
+                            <button onClick={() => handleEdit(item)} className="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-md transition-colors" title="Sửa">
                               <Edit3 className="w-4 h-4" />
                             </button>
                             <button onClick={() => handleDelete(item.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Xóa">
@@ -193,6 +221,14 @@ export function History({ transactions, onTransactionsChange }: HistoryProps) {
           Tổng số: {filteredTransactions.length}
         </div>
       </Card>
+
+      <AddRecordModal 
+        isOpen={isActionModalOpen} 
+        onClose={() => setIsActionModalOpen(false)} 
+        onSuccess={onTransactionsChange}
+        mode={actionModalMode}
+        initialData={selectedTransaction}
+      />
     </div>
   );
 }
