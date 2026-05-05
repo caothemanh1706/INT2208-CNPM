@@ -4,31 +4,109 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────────────────────────────────────
 model User {
+  id          Int      @id @default(autoincrement())
+  email       String   @unique
+  username    String?  @unique
+  password    String
+  displayName String?            // Tên hiển thị
+  avatarUrl   String?            // URL ảnh đại diện
+  currency    String   @default("VND") // Đơn vị tiền tệ mặc định
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions  Transaction[]
+  budgets       Budget[]
+  notes         Note[]
+  accounts      Account[]
+  categories    Category[]
+  recurringTxns RecurringTransaction[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACCOUNT — Tài khoản / Ví
+// ─────────────────────────────────────────────────────────────────────────────
+model Account {
   id        Int      @id @default(autoincrement())
-  email     String   @unique
-  username  String?  @unique
-  password  String
+  name      String                      // "Tiền mặt", "VCB", "MoMo"...
+  type      String   @default("bank")   // "bank" | "cash" | "ewallet" | "investment"
+  balance   Float    @default(0)
+  currency  String   @default("VND")
+  icon      String?                     // Tên icon lucide
+  color     String?                     // Mã màu hex
+  isDefault Boolean  @default(false)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  transactions Transaction[]
-  budgets      Budget[]
-  notes        Note[]
+
+  user        User          @relation(fields: [userId], references: [id])
+  userId      Int
+  transactions    Transaction[] @relation("TxFromAccount")
+  transfersTo     Transaction[] @relation("TxToAccount")
+
+  @@unique([userId, name])
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CATEGORY — Danh mục thu/chi
+// ─────────────────────────────────────────────────────────────────────────────
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String                      // "Ăn uống", "Lương", "Di chuyển"...
+  type      String                      // "expense" | "income" | "both"
+  icon      String?                     // Tên icon lucide
+  color     String?                     // Mã màu hex
+  isSystem  Boolean  @default(false)    // true = danh mục mặc định hệ thống
+  createdAt DateTime @default(now())
+
+  user         User?         @relation(fields: [userId], references: [id])
+  userId       Int?                     // null = danh mục hệ thống chung
+  transactions Transaction[]
+  budgets      Budget[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TRANSACTION — Giao dịch
+// ─────────────────────────────────────────────────────────────────────────────
 model Transaction {
   id          Int      @id @default(autoincrement())
-  type        String   // "expense", "income", "transfer", "adjust"
+  type        String   // "expense" | "income" | "transfer" | "adjust"
   amount      Float
-  account     String
+
+  // Legacy text fields (giữ tương thích ngược)
+  account     String?
   toAccount   String?
   category    String?
+
+  // Liên kết với Account model
+  accountId   Int?
+  accountRel  Account?  @relation("TxFromAccount", fields: [accountId], references: [id])
+  toAccountId Int?
+  toAccountRel Account? @relation("TxToAccount", fields: [toAccountId], references: [id])
+
+  // Liên kết với Category model
+  categoryId  Int?
+  categoryRel Category? @relation(fields: [categoryId], references: [id])
+
+  // Thông tin bổ sung
   date        DateTime @default(now())
   description String?
+  note        String?   // Ghi chú ngắn
+  tags        String?   // JSON array, vd: '["cafe","bạn bè"]'
+  receiptUrl  String?   // URL ảnh hóa đơn
+  location    String?   // Địa điểm giao dịch
+
+  // Giao dịch định kỳ
+  isRecurring Boolean  @default(false)
+  recurringId Int?
+  recurring   RecurringTransaction? @relation(fields: [recurringId], references: [id])
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -36,23 +114,77 @@ model Transaction {
   userId      Int
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// BUDGET — Ngân sách
+// ─────────────────────────────────────────────────────────────────────────────
 model Budget {
   id        Int      @id @default(autoincrement())
-  category  String
-  limit     Float
+  name      String?                     // Tên ngân sách tùy chọn
+
+  // Legacy
+  category  String   @default("")
   month     String   @default("current")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int
+  // Liên kết với Category model
+  categoryId  Int?
+  categoryRel Category? @relation(fields: [categoryId], references: [id])
 
-  @@unique([userId, category])
+  limit       Float
+  period      String   @default("monthly")  // "monthly" | "weekly" | "yearly" | "custom"
+  startDate   DateTime?
+  endDate     DateTime?
+  icon        String?
+  color       String?
+  rollover    Boolean  @default(false)       // Chuyển số dư sang kỳ sau
+  alertAt     Float    @default(80)          // Cảnh báo khi đã dùng X%
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RECURRING TRANSACTION — Giao dịch định kỳ
+// ─────────────────────────────────────────────────────────────────────────────
+model RecurringTransaction {
+  id          Int      @id @default(autoincrement())
+  name        String                      // "Tiền thuê nhà", "Netflix"...
+  type        String                      // "expense" | "income"
+  amount      Float
+  accountId   Int?
+  categoryId  Int?
+  description String?
+
+  frequency   String                      // "daily" | "weekly" | "monthly" | "yearly"
+  startDate   DateTime
+  endDate     DateTime?                   // null = không giới hạn
+  nextDueDate DateTime
+  lastRunDate DateTime?
+
+  isActive    Boolean  @default(true)
+  autoCreate  Boolean  @default(false)    // Tự động tạo giao dịch khi đến hạn
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id])
+  userId       Int
+  transactions Transaction[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NOTE — Ghi chú
+// ─────────────────────────────────────────────────────────────────────────────
 model Note {
   id        Int      @id @default(autoincrement())
+  title     String?                     // Tiêu đề ghi chú
   content   String
+  color     String?                     // Màu nền ghi chú
+  isPinned  Boolean  @default(false)    // Ghim ghi chú
+  tags      String?                     // JSON array tags
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
