@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import {
   LayoutDashboard, BarChart2, Clock, Target, Settings,
-  LogOut, Bell, ChevronDown, Sun, Moon, Plus, X,
+  LogOut, Bell, ChevronDown, Sun, Moon, Plus, X, Sparkles,
 } from 'lucide-react';
 import { TransactionDrawer } from './TransactionDrawer';
 import { auth } from '../../lib/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { notificationService } from '../../lib/notifications';
+import { Chatbox } from './chat/Chatbox';
 
 const navItems = [
   { path: '/app', labelKey: 'dashboard', icon: LayoutDashboard },
@@ -333,6 +334,9 @@ export function Layout() {
       >
         <Plus size={26} color="white" />
       </button>
+
+      {/* Chatbox Widget */}
+      <Chatbox />
 
       {/* Transaction Drawer */}
       <TransactionDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onSaved={() => setRefreshKey(k => k + 1)} />

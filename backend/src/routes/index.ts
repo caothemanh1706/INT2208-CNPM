@@ -6,6 +6,7 @@ import noteRoutes from './note.routes';
 import categoryRoutes from './category.routes';
 import accountRoutes from './account.routes';
 import otherRoutes from './other.routes';
+import chatRoutes from './chat.routes';
 
 const router = Router();
 
@@ -15,6 +16,7 @@ router.use('/budgets', budgetRoutes);
 router.use('/notes', noteRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/accounts', accountRoutes);
+router.use('/assistant', chatRoutes);
 router.use('/', otherRoutes);
 
 export default router;

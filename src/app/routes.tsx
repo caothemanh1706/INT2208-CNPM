@@ -8,7 +8,7 @@ import { Statistics } from './pages/Statistics';
 import { History } from './pages/History';
 import { Goals } from './pages/Goals';
 import { Settings } from './pages/Settings';
-
+ 
 export const router = createBrowserRouter([
   { path: '/', Component: Landing },
   { path: '/login', Component: Login },

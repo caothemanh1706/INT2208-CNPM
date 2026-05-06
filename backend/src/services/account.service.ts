@@ -1,7 +1,35 @@
 import prisma from '../prisma';
 
 export class AccountService {
-  async getAll(userId: number) { return prisma.account.findMany({ where: { userId, isActive: true }, orderBy: [{ isDefault: 'desc' }, { name: 'asc' }] }); }
+  async getAll(userId: number) {
+    const accounts = await prisma.account.findMany({
+      where: { userId, isActive: true },
+      orderBy: [{ isDefault: 'desc' }, { name: 'asc' }]
+    });
+
+    const transactions = await prisma.transaction.findMany({
+      where: { userId }
+    });
+
+    return accounts.map(acc => {
+      let liveBalance = acc.balance; // Initial balance
+      transactions.forEach(t => {
+        if (t.accountId === acc.id) {
+          if (t.type === 'income') {
+            liveBalance += t.amount;
+          } else if (t.type === 'expense') {
+            liveBalance -= t.amount;
+          } else if (t.type === 'transfer') {
+            liveBalance -= t.amount;
+          }
+        }
+        if (t.toAccountId === acc.id && t.type === 'transfer') {
+          liveBalance += t.amount;
+        }
+      });
+      return { ...acc, balance: liveBalance };
+    });
+  }
   async create(userId: number, data: any) {
     if (data.isDefault) await prisma.account.updateMany({ where: { userId }, data: { isDefault: false } });
     return prisma.account.create({ data: { ...data, balance: parseFloat(data.balance || 0), type: data.type || 'bank', currency: data.currency || 'VND', isDefault: !!data.isDefault, userId } });

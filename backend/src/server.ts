@@ -21,6 +21,35 @@ app.use('/api', apiRoutes);
 // Centralized error handling
 app.use(errorHandler);
 
-app.listen(port, () => {
+import prisma from './prisma';
+import fs from 'fs';
+
+app.listen(port, async () => {
   console.log(`Backend server running on http://localhost:${port}`);
+  
+  // Diagnostic DB query to inspect the SQLite database state
+  try {
+    const users = await prisma.user.findMany();
+    const accounts = await prisma.account.findMany();
+    const transactions = await prisma.transaction.findMany();
+    
+    fs.writeFileSync(
+      path.resolve(__dirname, 'db_status.log'),
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        users,
+        accounts,
+        transactions
+      }, null, 2)
+    );
+    console.log("Diagnostic db_status.log written successfully!");
+  } catch (err: any) {
+    console.error("Failed to run diagnostics", err);
+    try {
+      fs.writeFileSync(
+        path.resolve(__dirname, 'db_status_error.log'),
+        JSON.stringify({ error: err.message, stack: err.stack }, null, 2)
+      );
+    } catch (e) {}
+  }
 });

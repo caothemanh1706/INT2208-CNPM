@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "setup": "npm install && cd backend && npm install && (if not exist .env copy .env.example .env) && npx prisma generate && npx prisma migrate deploy && cd ..",
+    "setup": "npm install && cd backend && npm install && node -e \"const fs = require('fs'); if (!fs.existsSync('.env')) fs.copyFileSync('.env.example', '.env');\" && npx prisma generate && npx prisma migrate deploy && cd ..",
     "start:backend": "cd backend && npm run dev",
     "start:frontend": "vite"
   },

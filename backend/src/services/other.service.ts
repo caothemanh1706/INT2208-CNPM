@@ -1,28 +1,70 @@
 import prisma from '../prisma';
+import fs from 'fs';
+import path from 'path';
 
 export class OtherService {
   async getBalance(userId: number) {
-    const aggregations = await prisma.transaction.groupBy({ by: ['type'], where: { userId }, _sum: { amount: true } });
-    let balance = 0;
+    const numericUserId = Number(userId);
+    const accounts = await prisma.account.findMany({ where: { userId: numericUserId, isActive: true } });
+    const initialAccountsBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+
+    const aggregations = await prisma.transaction.groupBy({ by: ['type'], where: { userId: numericUserId }, _sum: { amount: true } });
+    let transactionBalance = 0;
     aggregations.forEach(agg => {
-      if (agg.type === 'income') balance += (agg._sum.amount || 0);
-      else if (agg.type === 'expense') balance -= (agg._sum.amount || 0);
+      if (agg.type === 'income') transactionBalance += (agg._sum.amount || 0);
+      else if (agg.type === 'expense') transactionBalance -= (agg._sum.amount || 0);
     });
-    return { balance };
+    return { balance: initialAccountsBalance + transactionBalance };
   }
   async getStatsOverview(userId: number) {
+    const numericUserId = Number(userId);
     const now = new Date();
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     
-    const all = await prisma.transaction.groupBy({ by: ['type'], where: { userId }, _sum: { amount: true } });
-    let balance = 0; all.forEach(agg => { if (agg.type === 'income') balance += (agg._sum.amount || 0); else if (agg.type === 'expense') balance -= (agg._sum.amount || 0); });
+    const accounts = await prisma.account.findMany({ where: { userId: numericUserId, isActive: true } });
+    const initialAccountsBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
 
-    const current = await prisma.transaction.groupBy({ by: ['type'], where: { date: { gte: startOfCurrentMonth }, userId }, _sum: { amount: true } });
+    const all = await prisma.transaction.groupBy({ by: ['type'], where: { userId: numericUserId }, _sum: { amount: true } });
+    let transactionBalance = 0; 
+    all.forEach(agg => { 
+      if (agg.type === 'income') transactionBalance += (agg._sum.amount || 0); 
+      else if (agg.type === 'expense') transactionBalance -= (agg._sum.amount || 0); 
+    });
+    const balance = initialAccountsBalance + transactionBalance;
+
+    // Log the values to a file and console for absolute debugging clarity
+    console.log(`=== STATISTICS OVERVIEW REQUEST ===`);
+    console.log(`userId: ${userId}`);
+    console.log(`numericUserId: ${numericUserId}`);
+    console.log(`accounts found: ${accounts.length}`);
+    console.log(`initialAccountsBalance: ${initialAccountsBalance}`);
+    console.log(`transactionBalance: ${transactionBalance}`);
+    console.log(`calculated balance: ${balance}`);
+    console.log(`===================================`);
+
+    try {
+      fs.writeFileSync(
+        path.join(__dirname, 'debug_stats.log'),
+        JSON.stringify({
+          userId: userId,
+          numericUserId: numericUserId,
+          accountsCount: accounts.length,
+          accounts: accounts.map(a => ({ id: a.id, name: a.name, balance: a.balance, userId: a.userId })),
+          initialAccountsBalance: initialAccountsBalance,
+          transactionBalance: transactionBalance,
+          balance: balance
+        }, null, 2)
+      );
+    } catch (err) {
+      console.error('Failed to write debug log', err);
+    }
+
+    const current = await prisma.transaction.groupBy({ by: ['type'], where: { date: { gte: startOfCurrentMonth }, userId: numericUserId }, _sum: { amount: true } });
     let currentIncome = 0, currentExpense = 0;
     current.forEach(agg => { if (agg.type === 'income') currentIncome += (agg._sum.amount || 0); else if (agg.type === 'expense') currentExpense += (agg._sum.amount || 0); });
 
-    const last = await prisma.transaction.groupBy({ by: ['type'], where: { date: { gte: startOfLastMonth, lt: startOfCurrentMonth }, userId }, _sum: { amount: true } });
+    const last = await prisma.transaction.groupBy({ by: ['type'], where: { date: { gte: startOfLastMonth, lt: startOfCurrentMonth }, userId: numericUserId }, _sum: { amount: true } });
     let lastIncome = 0, lastExpense = 0;
     last.forEach(agg => { if (agg.type === 'income') lastIncome += (agg._sum.amount || 0); else if (agg.type === 'expense') lastExpense += (agg._sum.amount || 0); });
 
