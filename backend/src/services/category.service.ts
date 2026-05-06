@@ -1,7 +1,19 @@
 import prisma from '../prisma';
 
 export class CategoryService {
-  async getAll(userId: number) { return prisma.category.findMany({ where: { OR: [{ userId }, { isSystem: true }] }, orderBy: [{ isSystem: 'desc' }, { name: 'asc' }] }); }
+  async getAll(userId: number) {
+    const list = await prisma.category.findMany({
+      where: { OR: [{ userId }, { isSystem: true }] },
+      orderBy: [{ isSystem: 'desc' }, { name: 'asc' }]
+    });
+    const seen = new Set<string>();
+    return list.filter(c => {
+      const key = `${c.name.trim().toLowerCase()}_${c.type}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
   async create(userId: number, data: any) { return prisma.category.create({ data: { ...data, isSystem: false, userId } }); }
   async update(userId: number, id: number, data: any) { return prisma.category.update({ where: { id, userId }, data }); }
   async delete(userId: number, id: number) { return prisma.category.delete({ where: { id, userId } }); }

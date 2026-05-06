@@ -47,6 +47,28 @@ export const api = {
     return data;
   },
 
+  forgotPassword: async (email: string) => {
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.error || 'Yêu cầu thất bại');
+    return data;
+  },
+
+  resetPassword: async (email: string, otp: string, newPassword: string) => {
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, newPassword }),
+    });
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.error || 'Đặt lại mật khẩu thất bại');
+    return data;
+  },
+
   // --- TRANSACTIONS ---
   getTransactions: async () => {
     const res = await auth.fetch('/transactions');
@@ -237,6 +259,16 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to update profile');
     return res.json();
+  },
+
+  changePassword: async (data: { currentPassword?: string; newPassword?: string }) => {
+    const res = await auth.fetch('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    const result = await safeJson(res);
+    if (!res.ok) throw new Error(result.error || 'Failed to change password');
+    return result;
   },
 
   // --- RECURRING ---

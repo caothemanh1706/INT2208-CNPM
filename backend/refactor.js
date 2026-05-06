@@ -65,27 +65,68 @@ export class AuthService {
     
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { email, username, password: hashedPassword }
+      data: { email, username, password: hashedPassword, displayName: username }
     });
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    return { token, user: { id: user.id, email: user.email, username: user.username } };
+    return { token, user: { id: user.id, email: user.email, username: user.username, displayName: user.displayName } };
   }
 
   async login(data: any) {
     const { email, password } = data;
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email },
+          { username: email }
+        ]
+      }
+    });
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      throw new Error('Invalid email or password');
+      throw new Error('Email, tên đăng nhập hoặc mật khẩu không chính xác');
     }
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
-    return { token, user: { id: user.id, email: user.email, username: user.username } };
+    return { token, user: { id: user.id, email: user.email, username: user.username, displayName: user.displayName } };
+  }
+
+  async forgotPassword(data: any) {
+    const { email } = data;
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) throw new Error('Email không tồn tại trong hệ thống');
+    
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    otpStore.set(email, otp);
+    
+    console.log(`[SMTP SIMULATOR] Gửi email đặt lại mật khẩu đến: ${email} | Mã OTP: ${otp}`);
+    return { message: 'Mã xác thực đã được gửi thành công!', otp };
   }
 
   async resetPassword(data: any) {
-    const { email, newPassword } = data;
+    const { email, otp, newPassword } = data;
+    const savedOtp = otpStore.get(email);
+    if (!savedOtp || savedOtp !== otp) {
+      throw new Error('Mã OTP không chính xác hoặc đã hết hạn');
+    }
+    
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({ where: { email }, data: { password: hashedPassword } });
-    return { message: 'Password reset successful' };
+    otpStore.delete(email);
+    return { message: 'Đặt lại mật khẩu thành công!' };
+  }
+
+  async changePassword(userId: number, data: any) {
+    const { currentPassword, newPassword } = data;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new Error('Không tìm thấy người dùng');
+    
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) throw new Error('Mật khẩu hiện tại không chính xác');
+    
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword }
+    });
+    return { message: 'Đổi mật khẩu thành công!' };
   }
 }
 export const authService = new AuthService();
@@ -108,11 +149,20 @@ export class AuthController {
     } catch (e: any) { res.status(401).json({ error: e.message }); }
   }
   async forgotPassword(req: Request, res: Response, next: NextFunction) {
-    res.json({ message: 'Reset link sent to your email' });
+    try {
+      const result = await authService.forgotPassword(req.body);
+      res.json(result);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
   }
   async resetPassword(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await authService.resetPassword(req.body);
+      res.json(result);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  }
+  async changePassword(req: any, res: Response, next: NextFunction) {
+    try {
+      const result = await authService.changePassword(req.user.userId, req.body);
       res.json(result);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   }
@@ -122,12 +172,14 @@ export const authController = new AuthController();
 
 fs.writeFileSync(path.join(srcPath, 'routes', 'auth.routes.ts'), `import { Router } from 'express';
 import { authController } from '../controllers/auth.controller';
+import { authenticateJWT } from '../middlewares/auth.middleware';
 
 const router = Router();
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
+router.post('/change-password', authenticateJWT, authController.changePassword);
 
 export default router;
 `);
@@ -339,7 +391,19 @@ export default router;
 fs.writeFileSync(path.join(srcPath, 'services', 'category.service.ts'), `import prisma from '../prisma';
 
 export class CategoryService {
-  async getAll(userId: number) { return prisma.category.findMany({ where: { OR: [{ userId }, { isSystem: true }] }, orderBy: [{ isSystem: 'desc' }, { name: 'asc' }] }); }
+  async getAll(userId: number) {
+    const list = await prisma.category.findMany({
+      where: { OR: [{ userId }, { isSystem: true }] },
+      orderBy: [{ isSystem: 'desc' }, { name: 'asc' }]
+    });
+    const seen = new Set();
+    return list.filter(c => {
+      const key = `${c.name.trim().toLowerCase()}_${c.type}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
   async create(userId: number, data: any) { return prisma.category.create({ data: { ...data, isSystem: false, userId } }); }
   async update(userId: number, id: number, data: any) { return prisma.category.update({ where: { id, userId }, data }); }
   async delete(userId: number, id: number) { return prisma.category.delete({ where: { id, userId } }); }
