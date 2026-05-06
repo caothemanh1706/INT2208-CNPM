@@ -1,17 +1,47 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff, CheckCircle, TrendingUp } from 'lucide-react';
+import { api } from '../../lib/api';
+import { auth } from '../../lib/auth';
 
 export function Login() {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/app');
+    setError('');
+    setLoading(true);
+    try {
+      if (isLogin) {
+        const data = await api.login(email, password);
+        auth.setToken(data.token);
+        auth.setUser(data.user);
+        navigate('/app');
+      } else {
+        if (!username.trim()) {
+          setError('Vui lòng nhập tên người dùng');
+          setLoading(false);
+          return;
+        }
+        const data = await api.register(email, username, password);
+        auth.setToken(data.token);
+        auth.setUser(data.user);
+        // Seed default categories for new user
+        try { await api.seedCategories(); } catch (_) {}
+        navigate('/app');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Đã có lỗi xảy ra');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const bullets = [
@@ -143,6 +173,16 @@ export function Login() {
             <div className="flex-1 h-px" style={{ backgroundColor: '#E8EBF0' }} />
           </div>
 
+          {/* Error message */}
+          {error && (
+            <div
+              className="mb-4 px-4 py-3 rounded-xl"
+              style={{ backgroundColor: '#FFE8E8', border: '1px solid #FECDD3' }}
+            >
+              <p style={{ fontSize: 13, color: '#FF5C5C', fontWeight: 500 }}>{error}</p>
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -154,12 +194,31 @@ export function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="ban@email.com"
+                required
                 className="w-full px-4 py-3 rounded-xl border outline-none transition-all"
                 style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
                 onFocus={(e) => (e.target.style.borderColor = '#00C896')}
                 onBlur={(e) => (e.target.style.borderColor = '#E8EBF0')}
               />
             </div>
+
+            {!isLogin && (
+              <div>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1A2332', marginBottom: 6 }}>
+                  Tên người dùng
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="VD: nguyen_tuan"
+                  className="w-full px-4 py-3 rounded-xl border outline-none transition-all"
+                  style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
+                  onFocus={(e) => (e.target.style.borderColor = '#00C896')}
+                  onBlur={(e) => (e.target.style.borderColor = '#E8EBF0')}
+                />
+              </div>
+            )}
 
             <div>
               <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1A2332', marginBottom: 6 }}>
@@ -171,6 +230,7 @@ export function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  required
                   className="w-full px-4 py-3 rounded-xl border outline-none transition-all pr-12"
                   style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
                   onFocus={(e) => (e.target.style.borderColor = '#00C896')}
@@ -196,17 +256,18 @@ export function Login() {
 
             <button
               type="submit"
+              disabled={loading}
               className="w-full py-3.5 rounded-xl transition-all hover:opacity-90"
-              style={{ backgroundColor: '#00C896', color: 'white', fontSize: 15, fontWeight: 600, marginTop: 4 }}
+              style={{ backgroundColor: '#00C896', color: 'white', fontSize: 15, fontWeight: 600, marginTop: 4, opacity: loading ? 0.7 : 1 }}
             >
-              {isLogin ? 'Đăng nhập' : 'Tạo tài khoản'}
+              {loading ? 'Đang xử lý...' : (isLogin ? 'Đăng nhập' : 'Tạo tài khoản')}
             </button>
           </form>
 
           <p style={{ textAlign: 'center', fontSize: 14, color: '#8A9AB0', marginTop: 20 }}>
             {isLogin ? 'Chưa có tài khoản? ' : 'Đã có tài khoản? '}
             <button
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => { setIsLogin(!isLogin); setError(''); }}
               style={{ color: '#00C896', fontWeight: 600 }}
             >
               {isLogin ? 'Đăng ký ngay' : 'Đăng nhập'}

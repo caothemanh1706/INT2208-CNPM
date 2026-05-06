@@ -5,6 +5,7 @@ import {
   LogOut, Bell, ChevronDown, Sun, Moon, Plus,
 } from 'lucide-react';
 import { TransactionDrawer } from './TransactionDrawer';
+import { auth } from '../../lib/auth';
 
 const navItems = [
   { path: '/app', label: 'Dashboard', icon: LayoutDashboard },
@@ -27,6 +28,16 @@ export function Layout() {
   const navigate = useNavigate();
   const [darkMode, setDarkMode] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const user = auth.getUser();
+  const initials = auth.getInitials();
+  const displayName = user?.displayName || user?.username || user?.email?.split('@')[0] || 'User';
+
+  const handleLogout = () => {
+    auth.logout();
+    navigate('/login');
+  };
 
   const pageTitle = pageTitles[location.pathname] || 'Dashboard';
 
@@ -82,14 +93,14 @@ export function Layout() {
             className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
             style={{ backgroundColor: '#00C896' }}
           >
-            <span style={{ color: 'white', fontWeight: 700, fontSize: 13 }}>NT</span>
+            <span style={{ color: 'white', fontWeight: 700, fontSize: 13 }}>{initials}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>Nguyễn Tuấn</p>
+            <p style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>{displayName}</p>
             <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11 }}>Cá nhân</p>
           </div>
           <button
-            onClick={() => navigate('/')}
+            onClick={handleLogout}
             className="p-1 rounded-lg transition-colors"
             title="Đăng xuất"
           >
@@ -139,14 +150,14 @@ export function Layout() {
               className="w-9 h-9 rounded-full flex items-center justify-center"
               style={{ backgroundColor: '#00C896' }}
             >
-              <span style={{ color: 'white', fontWeight: 700, fontSize: 13 }}>NT</span>
+              <span style={{ color: 'white', fontWeight: 700, fontSize: 13 }}>{initials}</span>
             </div>
           </div>
         </header>
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-8" style={{ backgroundColor: '#F8F9FB' }}>
-          <Outlet context={{ openDrawer: () => setDrawerOpen(true) }} />
+          <Outlet context={{ openDrawer: () => setDrawerOpen(true), refreshKey }} />
         </main>
       </div>
 
@@ -160,7 +171,7 @@ export function Layout() {
       </button>
 
       {/* Transaction Drawer */}
-      <TransactionDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <TransactionDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} onSaved={() => setRefreshKey(k => k + 1)} />
     </div>
   );
 }

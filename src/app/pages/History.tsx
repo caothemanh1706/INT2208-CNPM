@@ -1,48 +1,98 @@
-import { useState } from 'react';
-import { Search, MoreHorizontal, Edit2, Trash2 } from 'lucide-react';
-
-const allTransactions = [
-  {
-    date: 'Thứ Hai, 02/06/2025',
-    dailyTotal: -120000,
-    items: [
-      { id: 1, icon: '🍜', category: 'Ăn uống', note: 'Bữa trưa văn phòng', wallet: 'Ví tiền mặt', amount: -85000, type: 'expense' },
-      { id: 2, icon: '🚗', category: 'Đi lại', note: 'Grab về nhà', wallet: 'Ví tiền mặt', amount: -35000, type: 'expense' },
-    ],
-  },
-  {
-    date: 'Chủ Nhật, 01/06/2025',
-    dailyTotal: 14850000,
-    items: [
-      { id: 3, icon: '💼', category: 'Thu nhập', note: 'Lương tháng 6', wallet: 'TPBank', amount: 15000000, type: 'income' },
-      { id: 4, icon: '🎬', category: 'Giải trí', note: 'Netflix Premium', wallet: 'Thẻ Visa', amount: -150000, type: 'expense' },
-    ],
-  },
-  {
-    date: 'Thứ Bảy, 31/05/2025',
-    dailyTotal: -980000,
-    items: [
-      { id: 5, icon: '🛍️', category: 'Mua sắm', note: 'Lazada - Đồ gia dụng', wallet: 'Thẻ Visa', amount: -250000, type: 'expense' },
-      { id: 6, icon: '🏠', category: 'Nhà cửa', note: 'Tiền thuê nhà tháng 6', wallet: 'TPBank', amount: -4500000, type: 'expense' },
-      { id: 7, icon: '💊', category: 'Sức khỏe', note: 'Khám định kỳ', wallet: 'Ví tiền mặt', amount: -230000, type: 'expense' },
-    ],
-  },
-  {
-    date: 'Thứ Sáu, 30/05/2025',
-    dailyTotal: 500000,
-    items: [
-      { id: 8, icon: '💰', category: 'Thu nhập', note: 'Chuyển khoản từ Hùng', wallet: 'TPBank', amount: 500000, type: 'income' },
-      { id: 9, icon: '☕', category: 'Ăn uống', note: 'Cà phê Highlands', wallet: 'Ví tiền mặt', amount: -65000, type: 'expense' },
-    ],
-  },
-];
+import { useState, useEffect } from 'react';
+import { Search, MoreHorizontal, Edit2, Trash2, X } from 'lucide-react';
+import { api } from '../../lib/api';
 
 type FilterType = 'all' | 'expense' | 'income';
 
+function getCategoryIcon(category: string) {
+  const map: Record<string, string> = {
+    'Ăn uống': '🍜', 'Di chuyển': '🚗', 'Mua sắm': '🛍️', 'Sức khỏe': '💊',
+    'Giải trí': '🎬', 'Giáo dục': '📚', 'Nhà ở': '🏠', 'Hóa đơn': '🧾',
+    'Du lịch': '✈️', 'Lương': '💼', 'Thưởng': '🎁', 'Đầu tư': '📈',
+    'Freelance': '💻', 'Thu nhập khác': '💰', 'Khác': '➕',
+  };
+  return map[category] || '💳';
+}
+
+function groupByDate(transactions: any[]) {
+  const groups: Record<string, any[]> = {};
+  transactions.forEach((tx) => {
+    const dateKey = new Date(tx.date).toLocaleDateString('vi-VN', {
+      weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+    });
+    if (!groups[dateKey]) groups[dateKey] = [];
+    groups[dateKey].push(tx);
+  });
+  return Object.entries(groups).map(([date, items]) => ({
+    date,
+    items,
+    dailyTotal: items.reduce((sum, tx) => {
+      if (tx.type === 'income') return sum + tx.amount;
+      if (tx.type === 'expense') return sum - tx.amount;
+      return sum;
+    }, 0),
+  }));
+}
+
 export function History() {
+  const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
   const [openMenu, setOpenMenu] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Edit modal state
+  const [editTx, setEditTx] = useState<any | null>(null);
+  const [editNote, setEditNote] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  const loadTransactions = async () => {
+    try {
+      const txs = await api.getTransactions();
+      setAllTransactions(txs);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadTransactions(); }, []);
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Xóa giao dịch này?')) return;
+    try {
+      await api.deleteTransaction(id);
+      setAllTransactions((prev) => prev.filter((tx) => tx.id !== id));
+    } catch (e) { console.error(e); }
+    setOpenMenu(null);
+  };
+
+  const openEdit = (tx: any) => {
+    setEditTx(tx);
+    setEditNote(tx.note || tx.description || '');
+    setEditAmount(String(tx.amount));
+    setOpenMenu(null);
+  };
+
+  const handleEditSave = async () => {
+    if (!editTx) return;
+    setEditSaving(true);
+    try {
+      const updated = await api.updateTransaction(editTx.id, {
+        type: editTx.type,
+        amount: parseFloat(editAmount) || editTx.amount,
+        note: editNote,
+        description: editNote,
+        category: editTx.category,
+        account: editTx.account,
+      });
+      setAllTransactions((prev) => prev.map((tx) => tx.id === updated.id ? updated : tx));
+      setEditTx(null);
+    } catch (e) { console.error(e); }
+    finally { setEditSaving(false); }
+  };
 
   const filters: { id: FilterType; label: string }[] = [
     { id: 'all', label: 'Tất cả' },
@@ -50,15 +100,16 @@ export function History() {
     { id: 'income', label: 'Thu tiền' },
   ];
 
-  const filteredGroups = allTransactions.map((group) => ({
-    ...group,
-    items: group.items.filter((tx) => {
-      const matchSearch = tx.category.toLowerCase().includes(search.toLowerCase()) ||
-        tx.note.toLowerCase().includes(search.toLowerCase());
-      const matchFilter = filter === 'all' || tx.type === filter;
-      return matchSearch && matchFilter;
-    }),
-  })).filter((g) => g.items.length > 0);
+  const filtered = allTransactions.filter((tx) => {
+    const matchSearch =
+      (tx.category || '').toLowerCase().includes(search.toLowerCase()) ||
+      (tx.note || '').toLowerCase().includes(search.toLowerCase()) ||
+      (tx.description || '').toLowerCase().includes(search.toLowerCase());
+    const matchFilter = filter === 'all' || tx.type === filter;
+    return matchSearch && matchFilter;
+  });
+
+  const filteredGroups = groupByDate(filtered);
 
   return (
     <div className="space-y-5" style={{ fontFamily: 'DM Sans, sans-serif' }}>
@@ -107,7 +158,11 @@ export function History() {
 
       {/* Timeline groups */}
       <div className="space-y-5">
-        {filteredGroups.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-20">
+            <p style={{ fontSize: 15, color: '#8A9AB0' }}>Đang tải...</p>
+          </div>
+        ) : filteredGroups.length === 0 ? (
           <div className="text-center py-20">
             <span style={{ fontSize: 48 }}>🔍</span>
             <p style={{ fontSize: 15, color: '#8A9AB0', marginTop: 12 }}>Không tìm thấy giao dịch nào</p>
@@ -136,7 +191,7 @@ export function History() {
                 className="bg-white rounded-2xl overflow-hidden divide-y"
                 style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #F0F2F5', borderColor: '#F0F2F5' }}
               >
-                {group.items.map((tx, idx) => (
+                {group.items.map((tx) => (
                   <div
                     key={tx.id}
                     className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors relative"
@@ -146,13 +201,13 @@ export function History() {
                       className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                       style={{ backgroundColor: tx.type === 'income' ? '#E8FBF5' : '#F8F9FB' }}
                     >
-                      <span style={{ fontSize: 20 }}>{tx.icon}</span>
+                      <span style={{ fontSize: 20 }}>{getCategoryIcon(tx.category || '')}</span>
                     </div>
 
                     {/* Category + note */}
                     <div className="flex-1 min-w-0">
-                      <p style={{ fontSize: 14, fontWeight: 600, color: '#1A2332' }}>{tx.category}</p>
-                      <p style={{ fontSize: 12, color: '#8A9AB0', marginTop: 1 }}>{tx.note}</p>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: '#1A2332' }}>{tx.category || tx.type}</p>
+                      <p style={{ fontSize: 12, color: '#8A9AB0', marginTop: 1 }}>{tx.note || tx.description || '—'}</p>
                     </div>
 
                     {/* Wallet badge */}
@@ -160,7 +215,7 @@ export function History() {
                       className="px-2.5 py-1 rounded-full flex-shrink-0"
                       style={{ backgroundColor: '#F0F2F5', color: '#5A6A7A', fontSize: 11, fontWeight: 600 }}
                     >
-                      {tx.wallet}
+                      {tx.account || '—'}
                     </span>
 
                     {/* Amount */}
@@ -192,14 +247,14 @@ export function History() {
                         >
                           <button
                             className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-gray-50 transition-colors"
-                            onClick={() => setOpenMenu(null)}
+                            onClick={() => openEdit(tx)}
                           >
                             <Edit2 size={14} color="#5A6A7A" />
                             <span style={{ fontSize: 13, color: '#1A2332' }}>Chỉnh sửa</span>
                           </button>
                           <button
                             className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-red-50 transition-colors"
-                            onClick={() => setOpenMenu(null)}
+                            onClick={() => handleDelete(tx.id)}
                           >
                             <Trash2 size={14} color="#FF5C5C" />
                             <span style={{ fontSize: 13, color: '#FF5C5C' }}>Xóa</span>
@@ -214,6 +269,61 @@ export function History() {
           ))
         )}
       </div>
+
+      {/* Edit Modal */}
+      {editTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(15,25,35,0.5)' }}>
+          <div className="bg-white rounded-2xl p-6" style={{ width: 400, boxShadow: '0 24px 48px rgba(0,0,0,0.2)' }}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 18, color: '#1A2332' }}>
+                Chỉnh sửa giao dịch
+              </h3>
+              <button onClick={() => setEditTx(null)}>
+                <X size={20} color="#8A9AB0" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#1A2332', display: 'block', marginBottom: 6 }}>Số tiền (₫)</label>
+                <input
+                  type="number"
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border outline-none"
+                  style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#1A2332', display: 'block', marginBottom: 6 }}>Ghi chú</label>
+                <input
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  placeholder="Ghi chú..."
+                  className="w-full px-4 py-3 rounded-xl border outline-none"
+                  style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setEditTx(null)}
+                  className="flex-1 py-3 rounded-xl border"
+                  style={{ borderColor: '#E8EBF0', color: '#5A6A7A', fontSize: 14, fontWeight: 600 }}
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleEditSave}
+                  disabled={editSaving}
+                  className="flex-1 py-3 rounded-xl"
+                  style={{ backgroundColor: '#00C896', color: 'white', fontSize: 14, fontWeight: 600, opacity: editSaving ? 0.7 : 1 }}
+                >
+                  {editSaving ? 'Đang lưu...' : 'Lưu'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   User, Lock, Shield, Wallet, SlidersHorizontal, RefreshCw,
-  Globe, Bell, Download, Trash2, Edit2, Plus, X, ChevronRight,
+  Globe, Bell, Download, Trash2, Plus, X,
 } from 'lucide-react';
+import { api } from '../../lib/api';
+import { auth } from '../../lib/auth';
 
 type SettingSection =
   | 'profile'
@@ -49,54 +51,57 @@ const menuGroups = [
   },
 ];
 
-const wallets = [
-  { id: 1, icon: '💵', name: 'Ví tiền mặt', balance: 2500000, isDefault: true, color: '#00C896' },
-  { id: 2, icon: '🏦', name: 'Tài khoản TPBank', balance: 35200000, isDefault: false, color: '#4B9EFF' },
-  { id: 3, icon: '💳', name: 'Thẻ Visa Techcombank', balance: 12000000, isDefault: false, color: '#7B68EE' },
-];
-
 function ProfileSection() {
+  const currentUser = auth.getUser();
+  const [displayName, setDisplayName] = useState(currentUser?.displayName || currentUser?.username || '');
+  const [email] = useState(currentUser?.email || '');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const handleSave = async () => {
+    setSaving(true); setMsg('');
+    try {
+      const updated = await api.updateProfile({ displayName });
+      auth.setUser({ ...currentUser, ...updated });
+      setMsg('Đã lưu thay đổi!');
+    } catch { setMsg('Lưu thất bại'); }
+    finally { setSaving(false); }
+  };
+
   return (
     <div className="space-y-5">
       <div>
         <p style={{ fontSize: 13, color: '#8A9AB0', marginBottom: 16 }}>Cập nhật thông tin cá nhân của bạn</p>
         <div className="flex items-center gap-5 mb-6">
           <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: '#00C896' }}>
-            <span style={{ color: 'white', fontSize: 24, fontWeight: 700 }}>NT</span>
+            <span style={{ color: 'white', fontSize: 24, fontWeight: 700 }}>{auth.getInitials()}</span>
           </div>
-          <button
-            className="px-4 py-2 rounded-lg border transition-all hover:bg-gray-50"
-            style={{ borderColor: '#E8EBF0', fontSize: 13, color: '#5A6A7A', fontWeight: 600 }}
-          >
-            Đổi ảnh đại diện
-          </button>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        {[
-          { label: 'Họ và tên', value: 'Nguyễn Văn Tuấn', type: 'text' },
-          { label: 'Email', value: 'nguyen.tuan@email.com', type: 'email' },
-          { label: 'Số điện thoại', value: '0912 345 678', type: 'tel' },
-          { label: 'Ngày sinh', value: '1995-06-15', type: 'date' },
-        ].map((field) => (
-          <div key={field.label}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1A2332', marginBottom: 6 }}>
-              {field.label}
-            </label>
-            <input
-              type={field.type}
-              defaultValue={field.value}
-              className="w-full px-4 py-3 rounded-xl border outline-none"
-              style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
-            />
-          </div>
-        ))}
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1A2332', marginBottom: 6 }}>Tên hiển thị</label>
+          <input
+            type="text" value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border outline-none"
+            style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
+          />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#1A2332', marginBottom: 6 }}>Email</label>
+          <input type="email" value={email} readOnly
+            className="w-full px-4 py-3 rounded-xl border outline-none"
+            style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#8A9AB0', backgroundColor: '#F8F9FB' }}
+          />
+        </div>
       </div>
-      <button
+      {msg && <p style={{ fontSize: 13, color: msg.includes('thất') ? '#FF5C5C' : '#00C896' }}>{msg}</p>}
+      <button onClick={handleSave} disabled={saving}
         className="px-6 py-3 rounded-xl transition-all hover:opacity-90"
-        style={{ backgroundColor: '#00C896', color: 'white', fontSize: 14, fontWeight: 600 }}
+        style={{ backgroundColor: '#00C896', color: 'white', fontSize: 14, fontWeight: 600, opacity: saving ? 0.7 : 1 }}
       >
-        Lưu thay đổi
+        {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
       </button>
     </div>
   );
@@ -134,8 +139,30 @@ function PasswordSection() {
 }
 
 function WalletsSection() {
-  const [walletList, setWalletList] = useState(wallets);
+  const [walletList, setWalletList] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newBalance, setNewBalance] = useState('');
+
+  useEffect(() => {
+    api.getAccounts().then(setWalletList).catch(console.error);
+  }, []);
+
+  const handleAdd = async () => {
+    if (!newName.trim()) return;
+    try {
+      const acc = await api.createAccount({ name: newName, balance: parseFloat(newBalance) || 0 });
+      setWalletList([...walletList, acc]);
+      setNewName(''); setNewBalance(''); setShowAdd(false);
+    } catch (e) { console.error(e); }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await api.deleteAccount(id);
+      setWalletList(walletList.filter(w => w.id !== id));
+    } catch (e) { console.error(e); }
+  };
 
   return (
     <div className="space-y-4">
@@ -149,34 +176,26 @@ function WalletsSection() {
         >
           <div
             className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: w.color + '20' }}
+            style={{ backgroundColor: (w.color || '#00C896') + '20' }}
           >
-            <span style={{ fontSize: 22 }}>{w.icon}</span>
+            <span style={{ fontSize: 22 }}>{w.icon || '🏦'}</span>
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <p style={{ fontSize: 14, fontWeight: 600, color: '#1A2332' }}>{w.name}</p>
               {w.isDefault && (
-                <span
-                  className="px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: '#E8FBF5', color: '#00A87A', fontSize: 11, fontWeight: 600 }}
-                >
-                  Mặc định
-                </span>
+                <span className="px-2 py-0.5 rounded-full" style={{ backgroundColor: '#E8FBF5', color: '#00A87A', fontSize: 11, fontWeight: 600 }}>Mặc định</span>
               )}
             </div>
             <p style={{ fontSize: 13, color: '#00C896', fontWeight: 600, marginTop: 2 }}>
-              {w.balance.toLocaleString('vi-VN')} ₫
+              {(w.balance || 0).toLocaleString('vi-VN')} ₫
             </p>
           </div>
           <div className="flex gap-2">
-            <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-200 transition-colors">
-              <Edit2 size={15} color="#5A6A7A" />
-            </button>
             {!w.isDefault && (
               <button
                 className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors"
-                onClick={() => setWalletList(walletList.filter(ww => ww.id !== w.id))}
+                onClick={() => handleDelete(w.id)}
               >
                 <Trash2 size={15} color="#FF5C5C" />
               </button>
@@ -185,42 +204,27 @@ function WalletsSection() {
         </div>
       ))}
 
-      {/* Add wallet */}
       {showAdd ? (
         <div className="p-4 rounded-xl border-2" style={{ borderColor: '#00C896', borderStyle: 'dashed' }}>
           <div className="flex gap-3 mb-3">
-            <input
-              placeholder="Tên ví"
-              className="flex-1 px-3 py-2 rounded-lg border outline-none"
+            <input value={newName} onChange={e => setNewName(e.target.value)}
+              placeholder="Tên ví" className="flex-1 px-3 py-2 rounded-lg border outline-none"
               style={{ borderColor: '#E8EBF0', fontSize: 13, color: '#1A2332' }}
             />
-            <input
-              type="number"
-              placeholder="Số dư ban đầu"
-              className="flex-1 px-3 py-2 rounded-lg border outline-none"
+            <input type="number" value={newBalance} onChange={e => setNewBalance(e.target.value)}
+              placeholder="Số dư ban đầu" className="flex-1 px-3 py-2 rounded-lg border outline-none"
               style={{ borderColor: '#E8EBF0', fontSize: 13, color: '#1A2332' }}
             />
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => setShowAdd(false)}
-              className="flex-1 py-2 rounded-lg border"
-              style={{ borderColor: '#E8EBF0', fontSize: 13, color: '#5A6A7A', fontWeight: 600 }}
-            >
-              Hủy
-            </button>
-            <button
-              onClick={() => setShowAdd(false)}
-              className="flex-1 py-2 rounded-lg"
-              style={{ backgroundColor: '#00C896', color: 'white', fontSize: 13, fontWeight: 600 }}
-            >
-              Thêm ví
-            </button>
+            <button onClick={() => setShowAdd(false)} className="flex-1 py-2 rounded-lg border"
+              style={{ borderColor: '#E8EBF0', fontSize: 13, color: '#5A6A7A', fontWeight: 600 }}>Hủy</button>
+            <button onClick={handleAdd} className="flex-1 py-2 rounded-lg"
+              style={{ backgroundColor: '#00C896', color: 'white', fontSize: 13, fontWeight: 600 }}>Thêm ví</button>
           </div>
         </div>
       ) : (
-        <button
-          onClick={() => setShowAdd(true)}
+        <button onClick={() => setShowAdd(true)}
           className="w-full py-4 rounded-xl border-2 flex items-center justify-center gap-2 transition-all hover:bg-gray-50"
           style={{ borderColor: '#E8EBF0', borderStyle: 'dashed', color: '#8A9AB0' }}
         >
@@ -379,6 +383,50 @@ function LanguageSection() {
   );
 }
 
+function RecurringSection() {
+  const [list, setList] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.getRecurring().then(setList).catch(console.error);
+  }, []);
+
+  const handleDelete = async (id: number) => {
+    try {
+      await api.deleteRecurring(id);
+      setList(list.filter(r => r.id !== id));
+    } catch (e) { console.error(e); }
+  };
+
+  const freqLabel: Record<string, string> = {
+    daily: 'Hàng ngày', weekly: 'Hàng tuần', monthly: 'Hàng tháng', yearly: 'Hàng năm'
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: '#8A9AB0', marginBottom: 16 }}>Các giao dịch tự động lặp lại</p>
+      {list.length === 0 && <p style={{ fontSize: 13, color: '#8A9AB0' }}>Chưa có giao dịch lặp lại nào</p>}
+      <div className="space-y-3">
+        {list.map((r) => (
+          <div key={r.id} className="flex items-center gap-4 p-4 rounded-xl border" style={{ borderColor: '#F0F2F5' }}>
+            <div className="flex-1">
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#1A2332' }}>{r.name}</p>
+              <p style={{ fontSize: 12, color: '#8A9AB0', marginTop: 1 }}>
+                {freqLabel[r.frequency] || r.frequency} · Kế tiếp: {new Date(r.nextDueDate).toLocaleDateString('vi-VN')}
+              </p>
+            </div>
+            <p style={{ fontSize: 14, fontWeight: 700, color: r.type === 'income' ? '#00C896' : '#FF5C5C', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+              {r.type === 'income' ? '+' : '-'}{r.amount.toLocaleString('vi-VN')} ₫
+            </p>
+            <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-red-50" onClick={() => handleDelete(r.id)}>
+              <Trash2 size={15} color="#FF5C5C" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const sectionComponents: Record<SettingSection, React.ReactNode> = {
   profile: <ProfileSection />,
   password: <PasswordSection />,
@@ -426,35 +474,7 @@ const sectionComponents: Record<SettingSection, React.ReactNode> = {
       </button>
     </div>
   ),
-  recurring: (
-    <div>
-      <p style={{ fontSize: 13, color: '#8A9AB0', marginBottom: 16 }}>Các giao dịch tự động lặp lại</p>
-      <div className="space-y-3">
-        {[
-          { name: 'Netflix Premium', amount: -150000, period: 'Hàng tháng', next: '01/07/2025', wallet: 'Thẻ Visa' },
-          { name: 'Thuê nhà', amount: -4500000, period: 'Hàng tháng', next: '05/07/2025', wallet: 'TPBank' },
-          { name: 'Bảo hiểm sức khỏe', amount: -350000, period: 'Hàng tháng', next: '10/07/2025', wallet: 'TPBank' },
-        ].map((r) => (
-          <div
-            key={r.name}
-            className="flex items-center gap-4 p-4 rounded-xl border"
-            style={{ borderColor: '#F0F2F5' }}
-          >
-            <div className="flex-1">
-              <p style={{ fontSize: 14, fontWeight: 600, color: '#1A2332' }}>{r.name}</p>
-              <p style={{ fontSize: 12, color: '#8A9AB0', marginTop: 1 }}>{r.period} · Kế tiếp: {r.next} · {r.wallet}</p>
-            </div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: '#FF5C5C', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-              -{Math.abs(r.amount).toLocaleString('vi-VN')} ₫
-            </p>
-            <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-red-50">
-              <Trash2 size={15} color="#FF5C5C" />
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  ),
+  recurring: <RecurringSection />,
   language: <LanguageSection />,
   notifications: <NotificationsSection />,
   export: <ExportSection />,

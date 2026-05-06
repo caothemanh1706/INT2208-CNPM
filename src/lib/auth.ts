@@ -7,6 +7,9 @@ export const auth = {
   getToken: () => {
     return localStorage.getItem('auth_token');
   },
+  isLoggedIn: () => {
+    return !!localStorage.getItem('auth_token');
+  },
   logout: () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
@@ -17,6 +20,12 @@ export const auth = {
   getUser: () => {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
+  },
+  getInitials: () => {
+    const user = auth.getUser();
+    if (!user) return '?';
+    const name = user.displayName || user.username || user.email || '';
+    return name.slice(0, 2).toUpperCase();
   },
   fetch: async (endpoint: string, options: any = {}) => {
     const token = auth.getToken();
@@ -33,7 +42,7 @@ export const auth = {
 
     if (response.status === 401 || response.status === 403) {
       auth.logout();
-      window.location.reload();
+      window.location.href = '/login';
     }
 
     return response;
