@@ -16,6 +16,13 @@ export interface TransactionInput {
   isRecurring?: boolean;
 }
 
+// Helper: safely parse JSON from a Response (won't throw on empty body)
+async function safeJson(res: Response): Promise<any> {
+  const text = await res.text();
+  if (!text) return {};
+  try { return JSON.parse(text); } catch { return {}; }
+}
+
 export const api = {
   // --- AUTH ---
   login: async (email: string, password: string) => {
@@ -24,11 +31,9 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Đăng nhập thất bại');
-    }
-    return res.json();
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.error || 'Đăng nhập thất bại');
+    return data;
   },
 
   register: async (email: string, username: string, password: string) => {
@@ -37,11 +42,9 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, username, password }),
     });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || 'Đăng ký thất bại');
-    }
-    return res.json();
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.error || 'Đăng ký thất bại');
+    return data;
   },
 
   // --- TRANSACTIONS ---

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, MoreHorizontal, Edit2, Trash2, X } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useTheme } from '../contexts/ThemeContext';
 
 type FilterType = 'all' | 'expense' | 'income';
 
@@ -35,6 +36,7 @@ function groupByDate(transactions: any[]) {
 }
 
 export function History() {
+  const { c, isDark } = useTheme();
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
@@ -112,25 +114,25 @@ export function History() {
   const filteredGroups = groupByDate(filtered);
 
   return (
-    <div className="space-y-5" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+    <div className="space-y-5 transition-colors duration-300" style={{ fontFamily: 'DM Sans, sans-serif' }}>
       {/* Controls */}
       <div className="flex items-center justify-between gap-4">
         <div
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white"
-          style={{ border: '1px solid #E8EBF0', width: 320 }}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-colors duration-300"
+          style={{ border: `1px solid ${c.inputBorder}`, backgroundColor: c.card, width: 320 }}
         >
-          <Search size={16} color="#8A9AB0" />
+          <Search size={16} color={c.textMuted} />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm kiếm theo ghi chú..."
             className="flex-1 outline-none bg-transparent"
-            style={{ fontSize: 13, color: '#1A2332' }}
+            style={{ fontSize: 13, color: c.text }}
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex gap-1 p-1 rounded-xl bg-white" style={{ border: '1px solid #E8EBF0' }}>
+          <div className="flex gap-1 p-1 rounded-xl transition-colors duration-300" style={{ backgroundColor: c.card, border: `1px solid ${c.inputBorder}` }}>
             {filters.map((f) => (
               <button
                 key={f.id}
@@ -138,7 +140,7 @@ export function History() {
                 className="px-4 py-1.5 rounded-lg transition-all"
                 style={{
                   backgroundColor: filter === f.id ? '#00C896' : 'transparent',
-                  color: filter === f.id ? 'white' : '#5A6A7A',
+                  color: filter === f.id ? 'white' : c.textSub,
                   fontSize: 13,
                   fontWeight: 600,
                 }}
@@ -148,8 +150,8 @@ export function History() {
             ))}
           </div>
           <button
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border"
-            style={{ borderColor: '#E8EBF0', fontSize: 13, color: '#5A6A7A' }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-colors duration-300"
+            style={{ borderColor: c.inputBorder, fontSize: 13, color: c.textSub, backgroundColor: c.card }}
           >
             Chọn khoảng thời gian
           </button>
@@ -160,19 +162,19 @@ export function History() {
       <div className="space-y-5">
         {loading ? (
           <div className="text-center py-20">
-            <p style={{ fontSize: 15, color: '#8A9AB0' }}>Đang tải...</p>
+            <p style={{ fontSize: 15, color: c.textMuted }}>Đang tải...</p>
           </div>
         ) : filteredGroups.length === 0 ? (
           <div className="text-center py-20">
             <span style={{ fontSize: 48 }}>🔍</span>
-            <p style={{ fontSize: 15, color: '#8A9AB0', marginTop: 12 }}>Không tìm thấy giao dịch nào</p>
+            <p style={{ fontSize: 15, color: c.textMuted, marginTop: 12 }}>Không tìm thấy giao dịch nào</p>
           </div>
         ) : (
           filteredGroups.map((group) => (
             <div key={group.date}>
               {/* Date header */}
               <div className="flex items-center justify-between mb-3 px-1">
-                <p style={{ fontSize: 12, fontWeight: 700, color: '#8A9AB0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: c.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   {group.date}
                 </p>
                 <p
@@ -188,32 +190,35 @@ export function History() {
 
               {/* Transaction cards */}
               <div
-                className="bg-white rounded-2xl overflow-hidden divide-y"
-                style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #F0F2F5', borderColor: '#F0F2F5' }}
+                className="rounded-2xl overflow-hidden divide-y transition-colors duration-300"
+                style={{ backgroundColor: c.card, boxShadow: c.cardShadow, border: `1px solid ${c.cardBorder}`, borderColor: c.divider }}
               >
                 {group.items.map((tx) => (
                   <div
                     key={tx.id}
-                    className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors relative"
+                    className="flex items-center gap-4 px-5 py-4 transition-colors relative cursor-pointer"
+                    style={{ backgroundColor: 'transparent' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c.rowHover)}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     {/* Icon */}
                     <div
                       className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: tx.type === 'income' ? '#E8FBF5' : '#F8F9FB' }}
+                      style={{ backgroundColor: tx.type === 'income' ? c.greenBg : c.tag }}
                     >
                       <span style={{ fontSize: 20 }}>{getCategoryIcon(tx.category || '')}</span>
                     </div>
 
                     {/* Category + note */}
                     <div className="flex-1 min-w-0">
-                      <p style={{ fontSize: 14, fontWeight: 600, color: '#1A2332' }}>{tx.category || tx.type}</p>
-                      <p style={{ fontSize: 12, color: '#8A9AB0', marginTop: 1 }}>{tx.note || tx.description || '—'}</p>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: c.text }}>{tx.category || tx.type}</p>
+                      <p style={{ fontSize: 12, color: c.textMuted, marginTop: 1 }}>{tx.note || tx.description || '—'}</p>
                     </div>
 
                     {/* Wallet badge */}
                     <span
                       className="px-2.5 py-1 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: '#F0F2F5', color: '#5A6A7A', fontSize: 11, fontWeight: 600 }}
+                      style={{ backgroundColor: c.pillBg, color: c.textSub, fontSize: 11, fontWeight: 600 }}
                     >
                       {tx.account || '—'}
                     </span>
@@ -235,26 +240,32 @@ export function History() {
                     {/* Options */}
                     <div className="relative">
                       <button
-                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
                         onClick={() => setOpenMenu(openMenu === tx.id ? null : tx.id)}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                       >
-                        <MoreHorizontal size={16} color="#8A9AB0" />
+                        <MoreHorizontal size={16} color={c.textMuted} />
                       </button>
                       {openMenu === tx.id && (
                         <div
                           className="absolute right-0 top-10 rounded-xl z-10 overflow-hidden"
-                          style={{ width: 140, backgroundColor: 'white', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', border: '1px solid #F0F2F5' }}
+                          style={{ width: 140, backgroundColor: c.card, boxShadow: c.cardShadow, border: `1px solid ${c.cardBorder}` }}
                         >
                           <button
-                            className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-gray-50 transition-colors"
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 transition-colors"
                             onClick={() => openEdit(tx)}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c.rowHover)}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                           >
-                            <Edit2 size={14} color="#5A6A7A" />
-                            <span style={{ fontSize: 13, color: '#1A2332' }}>Chỉnh sửa</span>
+                            <Edit2 size={14} color={c.textSub} />
+                            <span style={{ fontSize: 13, color: c.text }}>Chỉnh sửa</span>
                           </button>
                           <button
-                            className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-red-50 transition-colors"
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 transition-colors"
                             onClick={() => handleDelete(tx.id)}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c.redBg)}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                           >
                             <Trash2 size={14} color="#FF5C5C" />
                             <span style={{ fontSize: 13, color: '#FF5C5C' }}>Xóa</span>
@@ -272,42 +283,42 @@ export function History() {
 
       {/* Edit Modal */}
       {editTx && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(15,25,35,0.5)' }}>
-          <div className="bg-white rounded-2xl p-6" style={{ width: 400, boxShadow: '0 24px 48px rgba(0,0,0,0.2)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(10,18,28,0.65)' }}>
+          <div className="rounded-2xl p-6" style={{ width: 400, backgroundColor: c.card, boxShadow: '0 24px 48px rgba(0,0,0,0.2)' }}>
             <div className="flex justify-between items-center mb-4">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 18, color: '#1A2332' }}>
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 18, color: c.text }}>
                 Chỉnh sửa giao dịch
               </h3>
               <button onClick={() => setEditTx(null)}>
-                <X size={20} color="#8A9AB0" />
+                <X size={20} color={c.textMuted} />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#1A2332', display: 'block', marginBottom: 6 }}>Số tiền (₫)</label>
+                <label style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block', marginBottom: 6 }}>Số tiền (₫)</label>
                 <input
                   type="number"
                   value={editAmount}
                   onChange={(e) => setEditAmount(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border outline-none"
-                  style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
+                  style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#1A2332', display: 'block', marginBottom: 6 }}>Ghi chú</label>
+                <label style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block', marginBottom: 6 }}>Ghi chú</label>
                 <input
                   value={editNote}
                   onChange={(e) => setEditNote(e.target.value)}
                   placeholder="Ghi chú..."
                   className="w-full px-4 py-3 rounded-xl border outline-none"
-                  style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
+                  style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
                 />
               </div>
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setEditTx(null)}
-                  className="flex-1 py-3 rounded-xl border"
-                  style={{ borderColor: '#E8EBF0', color: '#5A6A7A', fontSize: 14, fontWeight: 600 }}
+                  className="flex-1 py-3 rounded-xl border transition-colors duration-300"
+                  style={{ borderColor: c.inputBorder, color: c.textSub, fontSize: 14, fontWeight: 600 }}
                 >
                   Hủy
                 </button>

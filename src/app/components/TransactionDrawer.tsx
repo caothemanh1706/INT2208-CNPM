@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Camera } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface TransactionDrawerProps {
   open: boolean;
@@ -17,6 +18,7 @@ const tabs: { id: TabType; label: string; color: string }[] = [
 ];
 
 export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerProps) {
+  const { c, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<TabType>('expense');
   const [amount, setAmount] = useState('0');
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
@@ -35,7 +37,6 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
     if (open) {
       api.getCategories().then((cats) => {
         setCategories(cats);
-        // Auto-select first category matching active tab type
         const first = cats.find((c: any) => c.type === activeTab || c.type === 'both');
         if (first) setSelectedCategoryId(first.id);
       }).catch(() => {});
@@ -48,7 +49,6 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
     }
   }, [open]);
 
-  // Update default category when tab changes
   useEffect(() => {
     if (categories.length > 0) {
       const first = categories.find((c: any) => c.type === activeTab || c.type === 'both');
@@ -89,7 +89,6 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
         isRecurring: recurring,
       });
 
-      // Reset form
       setAmount('0');
       setNote('');
       setRecurring(false);
@@ -111,34 +110,32 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
 
   return (
     <>
-      {/* Overlay */}
       <div
-        className="fixed inset-0 z-40"
-        style={{ backgroundColor: 'rgba(15,25,35,0.5)' }}
+        className="fixed inset-0 z-40 transition-colors duration-300"
+        style={{ backgroundColor: isDark ? 'rgba(10,18,28,0.65)' : 'rgba(15,25,35,0.5)' }}
         onClick={onClose}
       />
 
-      {/* Drawer */}
       <div
-        className="fixed right-0 top-0 h-full z-50 flex flex-col bg-white"
-        style={{ width: 480, fontFamily: 'DM Sans, sans-serif', boxShadow: '-8px 0 40px rgba(0,0,0,0.15)' }}
+        className="fixed right-0 top-0 h-full z-50 flex flex-col transition-colors duration-300"
+        style={{ width: 480, backgroundColor: c.card, fontFamily: 'DM Sans, sans-serif', boxShadow: '-8px 0 40px rgba(0,0,0,0.15)' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid #F0F2F5' }}>
-          <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 18, color: '#1A2332' }}>
+        <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: `1px solid ${c.divider}` }}>
+          <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 18, color: c.text }}>
             Thêm giao dịch mới
           </h2>
           <button
             onClick={onClose}
             className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
-            style={{ backgroundColor: '#F8F9FB' }}
+            style={{ backgroundColor: c.input }}
           >
-            <X size={18} color="#5A6A7A" />
+            <X size={18} color={c.textSub} />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex" style={{ borderBottom: '1px solid #F0F2F5' }}>
+        <div className="flex" style={{ borderBottom: `1px solid ${c.divider}` }}>
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -147,7 +144,7 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
               style={{
                 fontSize: 14,
                 fontWeight: 600,
-                color: activeTab === tab.id ? tab.color : '#8A9AB0',
+                color: activeTab === tab.id ? tab.color : c.textMuted,
                 borderBottom: activeTab === tab.id ? `2px solid ${tab.color}` : '2px solid transparent',
               }}
             >
@@ -161,10 +158,10 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
           {/* Amount */}
           <div className="text-center">
             <div
-              className="text-center py-4 px-4 rounded-xl"
-              style={{ backgroundColor: '#F8F9FB' }}
+              className="text-center py-4 px-4 rounded-xl transition-colors duration-300"
+              style={{ backgroundColor: c.input }}
             >
-              <p style={{ fontSize: 36, fontWeight: 700, color: '#1A2332', fontFamily: 'Plus Jakarta Sans, sans-serif', letterSpacing: '-1px' }}>
+              <p style={{ fontSize: 36, fontWeight: 700, color: c.text, fontFamily: 'Plus Jakarta Sans, sans-serif', letterSpacing: '-1px' }}>
                 {parseInt(amount || '0').toLocaleString('vi-VN')} ₫
               </p>
               <div className="flex justify-center gap-2 mt-3">
@@ -172,10 +169,10 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
                   <button
                     key={btn}
                     onClick={() => handleCalc(btn)}
-                    className="w-9 h-9 rounded-lg flex items-center justify-center transition-all"
+                    className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
                     style={{
-                      backgroundColor: btn === 'C' ? '#FFE8E8' : '#E8F7F2',
-                      color: btn === 'C' ? '#FF5C5C' : '#1A2332',
+                      backgroundColor: btn === 'C' ? c.redBg : (isDark ? 'rgba(0,200,150,0.1)' : '#E8F7F2'),
+                      color: btn === 'C' ? c.red : c.text,
                       fontSize: 13,
                       fontWeight: 600,
                     }}
@@ -190,7 +187,7 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
           {/* Category */}
           {activeTab !== 'transfer' && (
             <div>
-              <p style={{ fontWeight: 600, fontSize: 14, color: '#1A2332', marginBottom: 12 }}>Danh mục</p>
+              <p style={{ fontWeight: 600, fontSize: 14, color: c.text, marginBottom: 12 }}>Danh mục</p>
               <div className="grid grid-cols-4 gap-2">
                 {filteredCategories.length > 0 ? filteredCategories.map((cat) => (
                   <button
@@ -198,8 +195,8 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
                     onClick={() => setSelectedCategoryId(cat.id)}
                     className="flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all"
                     style={{
-                      borderColor: selectedCategoryId === cat.id ? '#00C896' : 'transparent',
-                      backgroundColor: selectedCategoryId === cat.id ? '#E8FBF5' : '#F8F9FB',
+                      borderColor: selectedCategoryId === cat.id ? c.green : 'transparent',
+                      backgroundColor: selectedCategoryId === cat.id ? c.greenBg : c.input,
                     }}
                   >
                     <span style={{ fontSize: 22 }}>
@@ -218,11 +215,10 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
                        cat.icon === 'Briefcase' ? '💻' :
                        '➕'}
                     </span>
-                    <span style={{ fontSize: 10, color: '#5A6A7A', fontWeight: 500, textAlign: 'center' }}>{cat.name}</span>
+                    <span style={{ fontSize: 10, color: c.textSub, fontWeight: 500, textAlign: 'center' }}>{cat.name}</span>
                   </button>
                 )) : (
-                  // Fallback khi categories chưa load
-                  <p style={{ fontSize: 13, color: '#8A9AB0', gridColumn: '1/-1' }}>Đang tải danh mục...</p>
+                  <p style={{ fontSize: 13, color: c.textMuted, gridColumn: '1/-1' }}>Đang tải danh mục...</p>
                 )}
               </div>
             </div>
@@ -230,14 +226,14 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
 
           {/* Wallet / Account */}
           <div>
-            <label style={{ fontWeight: 600, fontSize: 14, color: '#1A2332', display: 'block', marginBottom: 8 }}>
+            <label style={{ fontWeight: 600, fontSize: 14, color: c.text, display: 'block', marginBottom: 8 }}>
               {activeTab === 'transfer' ? 'Từ tài khoản' : 'Nguồn tiền'}
             </label>
             <select
               value={selectedAccountId ?? ''}
               onChange={(e) => setSelectedAccountId(e.target.value ? Number(e.target.value) : null)}
-              className="w-full px-4 py-3 rounded-xl border outline-none"
-              style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332', backgroundColor: '#F8F9FB' }}
+              className="w-full px-4 py-3 rounded-xl border outline-none transition-colors"
+              style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
             >
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>{a.name} — {a.balance.toLocaleString('vi-VN')} ₫</option>
@@ -249,14 +245,14 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
           {/* To Account (transfer only) */}
           {activeTab === 'transfer' && (
             <div>
-              <label style={{ fontWeight: 600, fontSize: 14, color: '#1A2332', display: 'block', marginBottom: 8 }}>
+              <label style={{ fontWeight: 600, fontSize: 14, color: c.text, display: 'block', marginBottom: 8 }}>
                 Đến tài khoản
               </label>
               <select
                 value={toAccountId ?? ''}
                 onChange={(e) => setToAccountId(e.target.value ? Number(e.target.value) : null)}
-                className="w-full px-4 py-3 rounded-xl border outline-none"
-                style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332', backgroundColor: '#F8F9FB' }}
+                className="w-full px-4 py-3 rounded-xl border outline-none transition-colors"
+                style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
               >
                 {accounts.filter(a => a.id !== selectedAccountId).map((a) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
@@ -267,21 +263,21 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
 
           {/* Date */}
           <div>
-            <label style={{ fontWeight: 600, fontSize: 14, color: '#1A2332', display: 'block', marginBottom: 8 }}>
+            <label style={{ fontWeight: 600, fontSize: 14, color: c.text, display: 'block', marginBottom: 8 }}>
               Thời gian
             </label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border outline-none"
-              style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332', backgroundColor: '#F8F9FB' }}
+              className="w-full px-4 py-3 rounded-xl border outline-none transition-colors"
+              style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
             />
           </div>
 
           {/* Note */}
           <div>
-            <label style={{ fontWeight: 600, fontSize: 14, color: '#1A2332', display: 'block', marginBottom: 8 }}>
+            <label style={{ fontWeight: 600, fontSize: 14, color: c.text, display: 'block', marginBottom: 8 }}>
               Ghi chú & Đính kèm
             </label>
             <textarea
@@ -289,12 +285,12 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               placeholder="Thêm ghi chú..."
-              className="w-full px-4 py-3 rounded-xl border outline-none resize-none"
-              style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332', backgroundColor: '#F8F9FB' }}
+              className="w-full px-4 py-3 rounded-xl border outline-none resize-none transition-colors"
+              style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
             />
             <button
-              className="mt-2 flex items-center gap-2 px-4 py-2 rounded-lg border"
-              style={{ borderColor: '#E8EBF0', fontSize: 13, color: '#5A6A7A' }}
+              className="mt-2 flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors"
+              style={{ borderColor: c.inputBorder, fontSize: 13, color: c.textSub, backgroundColor: c.card }}
             >
               <Camera size={16} />
               Đính kèm ảnh
@@ -304,13 +300,13 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
           {/* Recurring */}
           <div className="flex items-center justify-between">
             <div>
-              <p style={{ fontWeight: 600, fontSize: 14, color: '#1A2332' }}>Lặp lại tự động</p>
-              <p style={{ fontSize: 12, color: '#8A9AB0', marginTop: 2 }}>Tự động ghi chép theo chu kỳ</p>
+              <p style={{ fontWeight: 600, fontSize: 14, color: c.text }}>Lặp lại tự động</p>
+              <p style={{ fontSize: 12, color: c.textMuted, marginTop: 2 }}>Tự động ghi chép theo chu kỳ</p>
             </div>
             <button
               onClick={() => setRecurring(!recurring)}
               className="relative w-12 h-6 rounded-full transition-all"
-              style={{ backgroundColor: recurring ? '#00C896' : '#D1D9E0' }}
+              style={{ backgroundColor: recurring ? c.green : (isDark ? '#243040' : '#D1D9E0') }}
             >
               <span
                 className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
@@ -324,8 +320,8 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
               <select
                 value={recurringPeriod}
                 onChange={(e) => setRecurringPeriod(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border outline-none"
-                style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332', backgroundColor: '#F8F9FB' }}
+                className="w-full px-4 py-3 rounded-xl border outline-none transition-colors"
+                style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
               >
                 <option>Hàng ngày</option>
                 <option>Hàng tuần</option>
@@ -336,15 +332,17 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4" style={{ borderTop: '1px solid #F0F2F5' }}>
+        <div className="px-6 py-4" style={{ borderTop: `1px solid ${c.divider}` }}>
           {error && (
-            <p style={{ fontSize: 13, color: '#FF5C5C', marginBottom: 8 }}>{error}</p>
+            <p style={{ fontSize: 13, color: c.red, marginBottom: 8 }}>{error}</p>
           )}
           <div className="flex gap-3">
             <button
               onClick={onClose}
               className="flex-1 py-3 rounded-xl border transition-colors"
-              style={{ borderColor: '#E8EBF0', color: '#5A6A7A', fontSize: 14, fontWeight: 600 }}
+              style={{ borderColor: c.inputBorder, color: c.textSub, fontSize: 14, fontWeight: 600 }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c.rowHover)}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
             >
               Hủy
             </button>
@@ -352,7 +350,7 @@ export function TransactionDrawer({ open, onClose, onSaved }: TransactionDrawerP
               onClick={handleSave}
               disabled={loading}
               className="flex-1 py-3 rounded-xl transition-all"
-              style={{ backgroundColor: '#00C896', color: 'white', fontSize: 14, fontWeight: 600, opacity: loading ? 0.7 : 1 }}
+              style={{ backgroundColor: c.green, color: 'white', fontSize: 14, fontWeight: 600, opacity: loading ? 0.7 : 1 }}
             >
               {loading ? 'Đang lưu...' : 'Lưu giao dịch'}
             </button>

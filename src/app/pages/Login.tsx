@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Eye, EyeOff, CheckCircle, TrendingUp } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle, TrendingUp, Sun, Moon } from 'lucide-react';
 import { api } from '../../lib/api';
 import { auth } from '../../lib/auth';
+import { useTheme } from '../contexts/ThemeContext';
 
 export function Login() {
   const navigate = useNavigate();
+  const { c, isDark, toggle } = useTheme();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -51,10 +53,10 @@ export function Login() {
   ];
 
   return (
-    <div className="flex h-screen" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+    <div className="flex h-screen transition-colors duration-300" style={{ fontFamily: 'DM Sans, sans-serif', backgroundColor: c.bg }}>
       {/* Left panel */}
       <div
-        className="flex flex-col items-center justify-center"
+        className="flex flex-col items-center justify-center relative"
         style={{ flex: '0 0 50%', backgroundColor: '#0F1923', padding: '48px' }}
       >
         {/* Logo */}
@@ -124,28 +126,39 @@ export function Login() {
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 flex items-center justify-center bg-white" style={{ padding: '48px' }}>
+      <div className="flex-1 flex items-center justify-center transition-colors duration-300" style={{ padding: '48px', backgroundColor: c.card }}>
+        {/* Dark mode toggle */}
+        <button
+          onClick={toggle}
+          className="absolute top-5 right-5 w-10 h-10 rounded-xl flex items-center justify-center"
+          style={{ backgroundColor: isDark ? '#243040' : '#F0F2F5' }}
+        >
+          {isDark ? <Sun size={18} color="#F59E0B" /> : <Moon size={18} color="#1A2332" />}
+        </button>
+
         <div style={{ width: '100%', maxWidth: 400 }}>
           <h2
             style={{
               fontFamily: 'Plus Jakarta Sans, sans-serif',
               fontWeight: 700,
               fontSize: 28,
-              color: '#1A2332',
+              color: c.text,
               marginBottom: 8,
             }}
           >
             {isLogin ? 'Chào mừng trở lại' : 'Tạo tài khoản'}
           </h2>
-          <p style={{ color: '#8A9AB0', fontSize: 15, marginBottom: 28 }}>
+          <p style={{ color: c.textMuted, fontSize: 15, marginBottom: 28 }}>
             {isLogin ? 'Đăng nhập để tiếp tục' : 'Bắt đầu hành trình tài chính của bạn'}
           </p>
 
           {/* Social buttons */}
           <div className="space-y-3 mb-6">
             <button
-              className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border transition-all hover:bg-gray-50"
-              style={{ borderColor: '#E8EBF0', fontSize: 14, fontWeight: 500, color: '#1A2332' }}
+              className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border transition-all"
+              style={{ borderColor: c.inputBorder, fontSize: 14, fontWeight: 500, color: c.text, backgroundColor: c.input }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c.rowHover)}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = c.input)}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -156,8 +169,10 @@ export function Login() {
               Tiếp tục với Google
             </button>
             <button
-              className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border transition-all hover:bg-gray-50"
-              style={{ borderColor: '#E8EBF0', fontSize: 14, fontWeight: 500, color: '#1A2332' }}
+              className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border transition-all"
+              style={{ borderColor: c.inputBorder, fontSize: 14, fontWeight: 500, color: c.text, backgroundColor: c.input }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c.rowHover)}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = c.input)}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
@@ -168,25 +183,25 @@ export function Login() {
 
           {/* Divider */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px" style={{ backgroundColor: '#E8EBF0' }} />
-            <span style={{ color: '#8A9AB0', fontSize: 13 }}>hoặc</span>
-            <div className="flex-1 h-px" style={{ backgroundColor: '#E8EBF0' }} />
+            <div className="flex-1 h-px" style={{ backgroundColor: c.divider }} />
+            <span style={{ color: c.textMuted, fontSize: 13 }}>hoặc</span>
+            <div className="flex-1 h-px" style={{ backgroundColor: c.divider }} />
           </div>
 
           {/* Error message */}
           {error && (
             <div
               className="mb-4 px-4 py-3 rounded-xl"
-              style={{ backgroundColor: '#FFE8E8', border: '1px solid #FECDD3' }}
+              style={{ backgroundColor: c.redBg, border: `1px solid ${c.redBg}` }}
             >
-              <p style={{ fontSize: 13, color: '#FF5C5C', fontWeight: 500 }}>{error}</p>
+              <p style={{ fontSize: 13, color: c.red, fontWeight: 500 }}>{error}</p>
             </div>
           )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1A2332', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: c.text, marginBottom: 6 }}>
                 Email
               </label>
               <input
@@ -196,15 +211,15 @@ export function Login() {
                 placeholder="ban@email.com"
                 required
                 className="w-full px-4 py-3 rounded-xl border outline-none transition-all"
-                style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
+                style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
                 onFocus={(e) => (e.target.style.borderColor = '#00C896')}
-                onBlur={(e) => (e.target.style.borderColor = '#E8EBF0')}
+                onBlur={(e) => (e.target.style.borderColor = c.inputBorder)}
               />
             </div>
 
             {!isLogin && (
               <div>
-                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1A2332', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: c.text, marginBottom: 6 }}>
                   Tên người dùng
                 </label>
                 <input
@@ -213,15 +228,15 @@ export function Login() {
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="VD: nguyen_tuan"
                   className="w-full px-4 py-3 rounded-xl border outline-none transition-all"
-                  style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
+                  style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
                   onFocus={(e) => (e.target.style.borderColor = '#00C896')}
-                  onBlur={(e) => (e.target.style.borderColor = '#E8EBF0')}
+                  onBlur={(e) => (e.target.style.borderColor = c.inputBorder)}
                 />
               </div>
             )}
 
             <div>
-              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: '#1A2332', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: c.text, marginBottom: 6 }}>
                 Mật khẩu
               </label>
               <div className="relative">
@@ -232,16 +247,16 @@ export function Login() {
                   placeholder="••••••••"
                   required
                   className="w-full px-4 py-3 rounded-xl border outline-none transition-all pr-12"
-                  style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
+                  style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
                   onFocus={(e) => (e.target.style.borderColor = '#00C896')}
-                  onBlur={(e) => (e.target.style.borderColor = '#E8EBF0')}
+                  onBlur={(e) => (e.target.style.borderColor = c.inputBorder)}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2"
                 >
-                  {showPassword ? <EyeOff size={18} color="#8A9AB0" /> : <Eye size={18} color="#8A9AB0" />}
+                  {showPassword ? <EyeOff size={18} color={c.textMuted} /> : <Eye size={18} color={c.textMuted} />}
                 </button>
               </div>
             </div>
@@ -264,7 +279,7 @@ export function Login() {
             </button>
           </form>
 
-          <p style={{ textAlign: 'center', fontSize: 14, color: '#8A9AB0', marginTop: 20 }}>
+          <p style={{ textAlign: 'center', fontSize: 14, color: c.textMuted, marginTop: 20 }}>
             {isLogin ? 'Chưa có tài khoản? ' : 'Đã có tài khoản? '}
             <button
               onClick={() => { setIsLogin(!isLogin); setError(''); }}

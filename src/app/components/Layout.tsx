@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { TransactionDrawer } from './TransactionDrawer';
 import { auth } from '../../lib/auth';
+import { useTheme } from '../contexts/ThemeContext';
 
 const navItems = [
   { path: '/app', label: 'Dashboard', icon: LayoutDashboard },
@@ -26,7 +27,7 @@ const pageTitles: Record<string, string> = {
 export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [darkMode, setDarkMode] = useState(false);
+  const { isDark, toggle, c } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -42,9 +43,9 @@ export function Layout() {
   const pageTitle = pageTitles[location.pathname] || 'Dashboard';
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#F8F9FB', fontFamily: 'DM Sans, sans-serif' }}>
+    <div className="flex h-screen overflow-hidden transition-colors duration-300" style={{ backgroundColor: c.bg, fontFamily: 'DM Sans, sans-serif' }}>
       {/* Sidebar */}
-      <aside className="flex flex-col flex-shrink-0" style={{ width: 240, backgroundColor: '#1A2332' }}>
+      <aside className="flex flex-col flex-shrink-0 transition-colors duration-300" style={{ width: 240, backgroundColor: c.sidebar }}>
         {/* Logo */}
         <div className="flex items-center gap-3 px-6 py-5">
           <div
@@ -68,10 +69,10 @@ export function Layout() {
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer"
                 style={{
                   backgroundColor: isActive ? '#00C896' : 'transparent',
-                  color: isActive ? 'white' : 'rgba(255,255,255,0.55)',
+                  color: isActive ? 'white' : c.sidebarText,
                 }}
                 onMouseEnter={(e) => {
-                  if (!isActive) (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.07)';
+                  if (!isActive) (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.08)';
                 }}
                 onMouseLeave={(e) => {
                   if (!isActive) (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
@@ -87,7 +88,7 @@ export function Layout() {
         {/* User info */}
         <div
           className="flex items-center gap-3 px-4 py-5 mx-3 mb-3 rounded-xl"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
+          style={{ borderTop: `1px solid ${c.sidebarBorder}` }}
         >
           <div
             className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
@@ -113,33 +114,40 @@ export function Layout() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
         <header
-          className="flex-shrink-0 h-16 flex items-center justify-between px-8 bg-white"
-          style={{ borderBottom: '1px solid #E8EBF0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}
+          className="flex-shrink-0 h-16 flex items-center justify-between px-8 transition-colors duration-300"
+          style={{
+            backgroundColor: c.topbar,
+            borderBottom: `1px solid ${c.topbarBorder}`,
+            boxShadow: c.topbarShadow,
+          }}
         >
-          <h1 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 18, color: '#1A2332' }}>
+          <h1 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600, fontSize: 18, color: c.text }}>
             {pageTitle}
           </h1>
           <div className="flex items-center gap-3">
             <button
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border"
-              style={{ borderColor: '#E8EBF0', color: '#5A6A7A', fontSize: 13 }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors"
+              style={{ borderColor: c.inputBorder, color: c.textSub, fontSize: 13, backgroundColor: c.input }}
             >
               <span>Tất cả tài sản</span>
               <ChevronDown size={14} />
             </button>
             <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="w-9 h-9 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: '#F8F9FB' }}
+              onClick={toggle}
+              className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-300"
+              style={{ backgroundColor: isDark ? '#243040' : '#F8F9FB' }}
+              title={isDark ? 'Chuyển sang sáng' : 'Chuyển sang tối'}
             >
-              {darkMode ? <Sun size={17} color="#1A2332" /> : <Moon size={17} color="#1A2332" />}
+              {isDark
+                ? <Sun size={17} color="#F59E0B" />
+                : <Moon size={17} color="#1A2332" />}
             </button>
             <div className="relative">
               <button
-                className="w-9 h-9 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: '#F8F9FB' }}
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors"
+                style={{ backgroundColor: isDark ? '#243040' : '#F8F9FB' }}
               >
-                <Bell size={17} color="#1A2332" />
+                <Bell size={17} color={c.text} />
               </button>
               <span
                 className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
@@ -156,7 +164,7 @@ export function Layout() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-8" style={{ backgroundColor: '#F8F9FB' }}>
+        <main className="flex-1 overflow-y-auto p-8 transition-colors duration-300" style={{ backgroundColor: c.bg }}>
           <Outlet context={{ openDrawer: () => setDrawerOpen(true), refreshKey }} />
         </main>
       </div>

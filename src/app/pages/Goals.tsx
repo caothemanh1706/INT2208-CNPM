@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { MoreHorizontal, Calendar, Plus, X } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface Goal {
   id: number;
@@ -82,13 +83,14 @@ function getProgressColor(pct: number) {
 }
 
 function GoalCard({ goal, onFund }: { goal: Goal; onFund: (id: number) => void }) {
+  const { c, isDark } = useTheme();
   const pct = Math.round((goal.saved / goal.target) * 100);
   const progressColor = getProgressColor(pct);
 
   return (
     <div
-      className="bg-white rounded-2xl p-5 flex flex-col gap-4"
-      style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07)', border: '1px solid #F0F2F5' }}
+      className="rounded-2xl p-5 flex flex-col gap-4 transition-colors duration-300"
+      style={{ backgroundColor: c.card, boxShadow: c.cardShadow, border: `1px solid ${c.cardBorder}` }}
     >
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -98,20 +100,24 @@ function GoalCard({ goal, onFund }: { goal: Goal; onFund: (id: number) => void }
         >
           <span style={{ fontSize: 28 }}>{goal.icon}</span>
         </div>
-        <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100">
-          <MoreHorizontal size={18} color="#8A9AB0" />
+        <button
+          className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-300"
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+        >
+          <MoreHorizontal size={18} color={c.textMuted} />
         </button>
       </div>
 
       {/* Name */}
       <div>
-        <h3 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 17, color: '#1A2332', marginBottom: 6 }}>
+        <h3 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 17, color: c.text, marginBottom: 6 }}>
           {goal.name}
         </h3>
-        <p style={{ fontSize: 12, color: '#8A9AB0' }}>
-          Mục tiêu: <span style={{ fontWeight: 600, color: '#5A6A7A' }}>{goal.target.toLocaleString('vi-VN')} ₫</span>
+        <p style={{ fontSize: 12, color: c.textMuted }}>
+          Mục tiêu: <span style={{ fontWeight: 600, color: c.textSub }}>{goal.target.toLocaleString('vi-VN')} ₫</span>
         </p>
-        <p style={{ fontSize: 12, color: '#00C896', fontWeight: 600, marginTop: 2 }}>
+        <p style={{ fontSize: 12, color: c.green, fontWeight: 600, marginTop: 2 }}>
           Đã tiết kiệm: {goal.saved.toLocaleString('vi-VN')} ₫
         </p>
       </div>
@@ -119,10 +125,10 @@ function GoalCard({ goal, onFund }: { goal: Goal; onFund: (id: number) => void }
       {/* Progress */}
       <div>
         <div className="flex justify-between items-center mb-1.5">
-          <span style={{ fontSize: 11, color: '#8A9AB0' }}>Tiến độ</span>
+          <span style={{ fontSize: 11, color: c.textMuted }}>Tiến độ</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: progressColor }}>{pct}%</span>
         </div>
-        <div className="w-full h-2.5 rounded-full" style={{ backgroundColor: '#F0F2F5' }}>
+        <div className="w-full h-2.5 rounded-full transition-colors duration-300" style={{ backgroundColor: c.input }}>
           <div
             className="h-2.5 rounded-full transition-all"
             style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: progressColor }}
@@ -132,16 +138,19 @@ function GoalCard({ goal, onFund }: { goal: Goal; onFund: (id: number) => void }
 
       {/* Deadline */}
       <div className="flex items-center gap-2">
-        <Calendar size={14} color="#8A9AB0" />
-        <span style={{ fontSize: 12, color: '#8A9AB0' }}>Hạn: {goal.deadline}</span>
+        <Calendar size={14} color={c.textMuted} />
+        <span style={{ fontSize: 12, color: c.textMuted }}>Hạn: {goal.deadline}</span>
       </div>
 
       {/* Advice */}
       <div
-        className="px-3 py-2.5 rounded-xl"
-        style={{ backgroundColor: '#EFF6FF', border: '1px solid #DBEAFE' }}
+        className="px-3 py-2.5 rounded-xl transition-colors duration-300"
+        style={{
+          backgroundColor: isDark ? 'rgba(75, 158, 255, 0.1)' : '#EFF6FF',
+          border: `1px solid ${isDark ? 'rgba(75, 158, 255, 0.2)' : '#DBEAFE'}`,
+        }}
       >
-        <p style={{ fontSize: 12, color: '#1D4ED8', lineHeight: 1.5 }}>💡 {goal.advice}</p>
+        <p style={{ fontSize: 12, color: isDark ? '#60A5FA' : '#1D4ED8', lineHeight: 1.5 }}>💡 {goal.advice}</p>
       </div>
 
       {/* Actions */}
@@ -149,13 +158,15 @@ function GoalCard({ goal, onFund }: { goal: Goal; onFund: (id: number) => void }
         <button
           onClick={() => onFund(goal.id)}
           className="flex-1 py-2.5 rounded-xl transition-all hover:opacity-90"
-          style={{ backgroundColor: '#00C896', color: 'white', fontSize: 13, fontWeight: 600 }}
+          style={{ backgroundColor: c.green, color: 'white', fontSize: 13, fontWeight: 600 }}
         >
           Nạp tiền
         </button>
         <button
-          className="flex-1 py-2.5 rounded-xl border transition-all hover:bg-gray-50"
-          style={{ borderColor: '#E8EBF0', color: '#5A6A7A', fontSize: 13, fontWeight: 600 }}
+          className="flex-1 py-2.5 rounded-xl border transition-colors duration-300"
+          style={{ borderColor: c.inputBorder, color: c.textSub, fontSize: 13, fontWeight: 600, backgroundColor: 'transparent' }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c.rowHover)}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
         >
           Chi tiết
         </button>
@@ -165,6 +176,7 @@ function GoalCard({ goal, onFund }: { goal: Goal; onFund: (id: number) => void }
 }
 
 export function Goals() {
+  const { c, isDark } = useTheme();
   const [goals, setGoals] = useState(initialGoals);
   const [showNewModal, setShowNewModal] = useState(false);
   const [fundModal, setFundModal] = useState<number | null>(null);
@@ -207,11 +219,11 @@ export function Goals() {
     <div style={{ fontFamily: 'DM Sans, sans-serif' }}>
       {/* Top row */}
       <div className="flex items-center justify-between mb-6">
-        <p style={{ fontSize: 14, color: '#8A9AB0' }}>{goals.length} mục tiêu đang theo dõi</p>
+        <p style={{ fontSize: 14, color: c.textMuted }}>{goals.length} mục tiêu đang theo dõi</p>
         <button
           onClick={() => setShowNewModal(true)}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all hover:opacity-90"
-          style={{ backgroundColor: '#00C896', color: 'white', fontSize: 14, fontWeight: 600 }}
+          style={{ backgroundColor: c.green, color: 'white', fontSize: 14, fontWeight: 600 }}
         >
           <Plus size={18} />
           Tạo mục tiêu mới
@@ -227,17 +239,17 @@ export function Goals() {
 
       {/* Fund Modal */}
       {fundModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(15,25,35,0.5)' }}>
-          <div className="bg-white rounded-2xl p-6" style={{ width: 380, boxShadow: '0 24px 48px rgba(0,0,0,0.2)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center transition-colors duration-300" style={{ backgroundColor: isDark ? 'rgba(10,18,28,0.65)' : 'rgba(15,25,35,0.5)' }}>
+          <div className="rounded-2xl p-6 transition-colors duration-300" style={{ backgroundColor: c.card, width: 380, boxShadow: '0 24px 48px rgba(0,0,0,0.2)' }}>
             <div className="flex justify-between items-center mb-4">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 18, color: '#1A2332' }}>
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 18, color: c.text }}>
                 Nạp tiền vào mục tiêu
               </h3>
               <button onClick={() => setFundModal(null)}>
-                <X size={20} color="#8A9AB0" />
+                <X size={20} color={c.textMuted} />
               </button>
             </div>
-            <p style={{ fontSize: 14, color: '#8A9AB0', marginBottom: 16 }}>
+            <p style={{ fontSize: 14, color: c.textMuted, marginBottom: 16 }}>
               {goals.find(g => g.id === fundModal)?.name}
             </p>
             <input
@@ -245,21 +257,23 @@ export function Goals() {
               value={fundAmount}
               onChange={(e) => setFundAmount(e.target.value)}
               placeholder="Số tiền (VNĐ)"
-              className="w-full px-4 py-3 rounded-xl border outline-none mb-4"
-              style={{ borderColor: '#E8EBF0', fontSize: 15, color: '#1A2332' }}
+              className="w-full px-4 py-3 rounded-xl border outline-none mb-4 transition-colors duration-300"
+              style={{ borderColor: c.inputBorder, fontSize: 15, color: c.text, backgroundColor: c.input }}
             />
             <div className="flex gap-3">
               <button
                 onClick={() => setFundModal(null)}
-                className="flex-1 py-3 rounded-xl border"
-                style={{ borderColor: '#E8EBF0', color: '#5A6A7A', fontSize: 14, fontWeight: 600 }}
+                className="flex-1 py-3 rounded-xl border transition-colors duration-300"
+                style={{ borderColor: c.inputBorder, color: c.textSub, fontSize: 14, fontWeight: 600, backgroundColor: 'transparent' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c.rowHover)}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 Hủy
               </button>
               <button
                 onClick={confirmFund}
-                className="flex-1 py-3 rounded-xl"
-                style={{ backgroundColor: '#00C896', color: 'white', fontSize: 14, fontWeight: 600 }}
+                className="flex-1 py-3 rounded-xl transition-all"
+                style={{ backgroundColor: c.green, color: 'white', fontSize: 14, fontWeight: 600 }}
               >
                 Xác nhận
               </button>
@@ -270,19 +284,19 @@ export function Goals() {
 
       {/* New Goal Modal */}
       {showNewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(15,25,35,0.5)' }}>
-          <div className="bg-white rounded-2xl p-6" style={{ width: 420, boxShadow: '0 24px 48px rgba(0,0,0,0.2)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center transition-colors duration-300" style={{ backgroundColor: isDark ? 'rgba(10,18,28,0.65)' : 'rgba(15,25,35,0.5)' }}>
+          <div className="rounded-2xl p-6 transition-colors duration-300" style={{ backgroundColor: c.card, width: 420, boxShadow: '0 24px 48px rgba(0,0,0,0.2)' }}>
             <div className="flex justify-between items-center mb-5">
-              <h3 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 18, color: '#1A2332' }}>
+              <h3 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 700, fontSize: 18, color: c.text }}>
                 Tạo mục tiêu mới
               </h3>
               <button onClick={() => setShowNewModal(false)}>
-                <X size={20} color="#8A9AB0" />
+                <X size={20} color={c.textMuted} />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#1A2332', display: 'block', marginBottom: 6 }}>Biểu tượng</label>
+                <label style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block', marginBottom: 6 }}>Biểu tượng</label>
                 <div className="flex gap-2 flex-wrap">
                   {['🎯', '🏍️', '✈️', '🏠', '🚗', '🎓', '💍', '🏦', '📱', '🏋️'].map(e => (
                     <button
@@ -290,8 +304,8 @@ export function Goals() {
                       onClick={() => setNewGoal({ ...newGoal, icon: e })}
                       className="w-10 h-10 rounded-xl flex items-center justify-center border-2 transition-all"
                       style={{
-                        borderColor: newGoal.icon === e ? '#00C896' : 'transparent',
-                        backgroundColor: newGoal.icon === e ? '#E8FBF5' : '#F8F9FB',
+                        borderColor: newGoal.icon === e ? c.green : 'transparent',
+                        backgroundColor: newGoal.icon === e ? c.greenBg : c.input,
                         fontSize: 20,
                       }}
                     >
@@ -301,48 +315,50 @@ export function Goals() {
                 </div>
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#1A2332', display: 'block', marginBottom: 6 }}>Tên mục tiêu</label>
+                <label style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block', marginBottom: 6 }}>Tên mục tiêu</label>
                 <input
                   value={newGoal.name}
                   onChange={(e) => setNewGoal({ ...newGoal, name: e.target.value })}
                   placeholder="VD: Mua xe máy"
-                  className="w-full px-4 py-3 rounded-xl border outline-none"
-                  style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
+                  className="w-full px-4 py-3 rounded-xl border outline-none transition-colors duration-300"
+                  style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#1A2332', display: 'block', marginBottom: 6 }}>Số tiền mục tiêu (₫)</label>
+                <label style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block', marginBottom: 6 }}>Số tiền mục tiêu (₫)</label>
                 <input
                   type="number"
                   value={newGoal.target}
                   onChange={(e) => setNewGoal({ ...newGoal, target: e.target.value })}
                   placeholder="VD: 50000000"
-                  className="w-full px-4 py-3 rounded-xl border outline-none"
-                  style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
+                  className="w-full px-4 py-3 rounded-xl border outline-none transition-colors duration-300"
+                  style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#1A2332', display: 'block', marginBottom: 6 }}>Hạn chót</label>
+                <label style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block', marginBottom: 6 }}>Hạn chót</label>
                 <input
                   type="date"
                   value={newGoal.deadline}
                   onChange={(e) => setNewGoal({ ...newGoal, deadline: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border outline-none"
-                  style={{ borderColor: '#E8EBF0', fontSize: 14, color: '#1A2332' }}
+                  className="w-full px-4 py-3 rounded-xl border outline-none transition-colors duration-300"
+                  style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
                 />
               </div>
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setShowNewModal(false)}
-                  className="flex-1 py-3 rounded-xl border"
-                  style={{ borderColor: '#E8EBF0', color: '#5A6A7A', fontSize: 14, fontWeight: 600 }}
+                  className="flex-1 py-3 rounded-xl border transition-colors duration-300"
+                  style={{ borderColor: c.inputBorder, color: c.textSub, fontSize: 14, fontWeight: 600, backgroundColor: 'transparent' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = c.rowHover)}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
                   Hủy
                 </button>
                 <button
                   onClick={addGoal}
-                  className="flex-1 py-3 rounded-xl"
-                  style={{ backgroundColor: '#00C896', color: 'white', fontSize: 14, fontWeight: 600 }}
+                  className="flex-1 py-3 rounded-xl transition-all"
+                  style={{ backgroundColor: c.green, color: 'white', fontSize: 14, fontWeight: 600 }}
                 >
                   Tạo mục tiêu
                 </button>
