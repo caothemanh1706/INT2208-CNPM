@@ -588,24 +588,72 @@ function WalletsSection() {
 function BudgetSection() {
   const { c } = useTheme();
   const { t, language, currency } = useLanguage();
-  const [limits, setLimits] = useState<Record<string, string>>({
-    '🍜 Ăn uống': '3.000.000',
-    '🚗 Đi lại': '2.000.000',
-    '🛍️ Mua sắm': '2.000.000',
-    '🎬 Giải trí': '1.000.000',
-    '🏠 Nhà cửa': '4.000.000',
-  });
+  
+  interface CategoryBudget {
+    categoryId: number;
+    categoryName: string;
+    emoji: string;
+    budgetId?: number;
+    limit: string;
+  }
 
-  const translateSettingsCategory = (catStr: string) => {
-    const emojiMatch = catStr.match(/^([\s\S]*?)\s+(.*)$/);
-    if (emojiMatch) {
-      const [_, emoji, text] = emojiMatch;
-      let key = text.trim();
-      if (key === 'Đi lại') key = 'di chuyển';
-      if (key === 'Nhà cửa') key = 'nhà ở';
-      return `${emoji} ${t(key)}`;
-    }
-    return t(catStr);
+  const [categoryBudgets, setCategoryBudgets] = useState<CategoryBudget[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const getCategoryEmoji = (name: string, icon?: string) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('ăn uống') || lowerName.includes('food') || icon?.toLowerCase().includes('utensils')) return '🍜';
+    if (lowerName.includes('di chuyển') || lowerName.includes('đi lại') || lowerName.includes('travel') || icon?.toLowerCase().includes('car')) return '🚗';
+    if (lowerName.includes('mua sắm') || lowerName.includes('shop') || icon?.toLowerCase().includes('bag')) return '🛍️';
+    if (lowerName.includes('giải trí') || lowerName.includes('entertainment') || icon?.toLowerCase().includes('film') || icon?.toLowerCase().includes('tv') || icon?.toLowerCase().includes('game')) return '🎬';
+    if (lowerName.includes('nhà ở') || lowerName.includes('nhà cửa') || lowerName.includes('home') || lowerName.includes('house') || icon?.toLowerCase().includes('home')) return '🏠';
+    if (lowerName.includes('sức khỏe') || lowerName.includes('y tế') || lowerName.includes('health') || icon?.toLowerCase().includes('heart') || icon?.toLowerCase().includes('pill')) return '💊';
+    if (lowerName.includes('giáo dục') || lowerName.includes('học tập') || lowerName.includes('education') || icon?.toLowerCase().includes('book')) return '📚';
+    if (lowerName.includes('lương') || lowerName.includes('salary') || icon?.toLowerCase().includes('wallet')) return '💵';
+    return '🏷️';
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [cats, bdgts] = await Promise.all([
+          api.getCategories(),
+          api.getBudgets(),
+        ]);
+
+        const expenseCats = cats.filter((c: any) => c.type === 'expense');
+
+        const items = expenseCats.map((cat: any) => {
+          const match = bdgts.find(
+            (b: any) => b.categoryId === cat.id || b.category?.toLowerCase() === cat.name?.toLowerCase()
+          );
+
+          return {
+            categoryId: cat.id,
+            categoryName: cat.name,
+            emoji: getCategoryEmoji(cat.name, cat.icon),
+            budgetId: match?.id,
+            limit: match && match.limit > 0 ? Number(match.limit).toLocaleString('vi-VN') : '',
+          };
+        });
+
+        setCategoryBudgets(items);
+      } catch (err) {
+        console.error('Error loading budgets/categories:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const translateSettingsCategory = (catName: string) => {
+    let key = catName.trim();
+    if (key === 'Đi lại') key = 'di chuyển';
+    if (key === 'Nhà cửa') key = 'nhà ở';
+    return t(key);
   };
 
   const formatInputCurrency = (val: string) => {
@@ -614,48 +662,128 @@ function BudgetSection() {
     return Number(clean).toLocaleString('vi-VN');
   };
 
-  const handleLimitChange = (cat: string, val: string) => {
-    setLimits({
-      ...limits,
-      [cat]: formatInputCurrency(val),
-    });
+  const handleLimitChange = (idx: number, val: string) => {
+    const updated = [...categoryBudgets];
+    updated[idx].limit = formatInputCurrency(val);
+    setCategoryBudgets(updated);
   };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const promises = categoryBudgets.map(async (item) => {
+        const cleanLimit = item.limit.replace(/\D/g, '');
+        const limitVal = parseFloat(cleanLimit) || 0;
+
+        if (item.budgetId) {
+          if (limitVal > 0) {
+            await api.updateBudget(item.budgetId, { limit: limitVal });
+          } else {
+            await api.deleteBudget(item.budgetId);
+          }
+        } else {
+          if (limitVal > 0) {
+            await api.createBudget({
+              category: item.categoryName,
+              categoryId: item.categoryId,
+              limit: limitVal,
+              period: 'monthly'
+            });
+          }
+        }
+      });
+
+      await Promise.all(promises);
+
+      // Reload updated data
+      const [cats, bdgts] = await Promise.all([
+        api.getCategories(),
+        api.getBudgets(),
+      ]);
+
+      const expenseCats = cats.filter((c: any) => c.type === 'expense');
+      const updatedItems = expenseCats.map((cat: any) => {
+        const match = bdgts.find(
+          (b: any) => b.categoryId === cat.id || b.category?.toLowerCase() === cat.name?.toLowerCase()
+        );
+        return {
+          categoryId: cat.id,
+          categoryName: cat.name,
+          emoji: getCategoryEmoji(cat.name, cat.icon),
+          budgetId: match?.id,
+          limit: match && match.limit > 0 ? Number(match.limit).toLocaleString('vi-VN') : '',
+        };
+      });
+      setCategoryBudgets(updatedItems);
+
+      const msg = language === 'en'
+        ? 'Budgets: Successfully saved all budget limits!'
+        : language === 'zh'
+        ? '预算限额: 已成功保存所有分类支出限额！'
+        : 'Hạn mức: Đã lưu thành công tất cả hạn mức chi tiêu!';
+      notificationService.add(msg);
+    } catch (err) {
+      console.error('Error saving budgets:', err);
+      alert('Đã xảy ra lỗi khi lưu hạn mức!');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="py-8 text-center" style={{ color: c.textMuted, fontSize: 14 }}>
+        {language === 'en' ? 'Loading categories and budgets...' : language === 'zh' ? '正在加载支出分类与预算限额...' : 'Đang tải danh sách danh mục và hạn mức...'}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       <p style={{ fontSize: 13, color: c.textMuted }}>
         {language === 'en' ? 'Set monthly spending limit for each category' : language === 'zh' ? '为每个记账分类配置本月度支出硬性限制' : 'Đặt hạn mức chi tiêu cho từng danh mục'}
       </p>
-      {Object.entries(limits).map(([cat, val]) => (
-        <div key={cat} className="flex items-center gap-4" style={{ maxWidth: 480 }}>
-          <span style={{ fontSize: 14, fontWeight: 500, color: c.text, minWidth: 160 }}>
-            {translateSettingsCategory(cat)}
-          </span>
-          <input
-            type="text"
-            value={val}
-            onChange={(e) => handleLimitChange(cat, e.target.value)}
-            className="flex-1 px-4 py-2.5 rounded-xl border outline-none transition-colors duration-300"
-            style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
-          />
-          <span style={{ fontSize: 13, color: c.textMuted }}>
-            {currency === 'USD' ? '$' : currency === 'CNY' ? '¥' : '₫'}
-          </span>
-        </div>
-      ))}
+      
+      {categoryBudgets.length === 0 ? (
+        <p style={{ fontSize: 13, color: c.textMuted, py: 4 }}>
+          {language === 'en' ? 'No spending categories found.' : language === 'zh' ? '未找到任何支出分类。' : 'Không tìm thấy danh mục chi tiêu nào.'}
+        </p>
+      ) : (
+        categoryBudgets.map((item, idx) => (
+          <div key={item.categoryId} className="flex items-center gap-4" style={{ maxWidth: 480 }}>
+            <span style={{ fontSize: 14, fontWeight: 500, color: c.text, minWidth: 160 }}>
+              {item.emoji} {translateSettingsCategory(item.categoryName)}
+            </span>
+            <input
+              type="text"
+              value={item.limit}
+              onChange={(e) => handleLimitChange(idx, e.target.value)}
+              placeholder="0"
+              className="flex-1 px-4 py-2.5 rounded-xl border outline-none transition-colors duration-300"
+              style={{ borderColor: c.inputBorder, fontSize: 14, color: c.text, backgroundColor: c.input }}
+            />
+            <span style={{ fontSize: 13, color: c.textMuted }}>
+              {currency === 'USD' ? '$' : currency === 'CNY' ? '¥' : '₫'}
+            </span>
+          </div>
+        ))
+      )}
+
       <button
-        onClick={() => {
-          const msg = language === 'en'
-            ? 'Budgets: Successfully saved all budget limits!'
-            : language === 'zh'
-            ? '预算限额: 已成功保存所有分类支出限额！'
-            : 'Hạn mức: Đã lưu thành công tất cả hạn mức chi tiêu!';
-          notificationService.add(msg);
+        onClick={handleSave}
+        disabled={saving || categoryBudgets.length === 0}
+        className="px-6 py-3 rounded-xl transition-all hover:opacity-90 cursor-pointer flex items-center justify-center font-semibold text-sm"
+        style={{ 
+          backgroundColor: c.green, 
+          color: 'white', 
+          opacity: (saving || categoryBudgets.length === 0) ? 0.7 : 1,
+          cursor: (saving || categoryBudgets.length === 0) ? 'not-allowed' : 'pointer'
         }}
-        className="px-6 py-3 rounded-xl transition-all hover:opacity-90 cursor-pointer"
-        style={{ backgroundColor: c.green, color: 'white', fontSize: 14, fontWeight: 600 }}
       >
-        {language === 'en' ? 'Save budgets' : language === 'zh' ? '保存预算限制' : 'Lưu hạn mức'}
+        {saving 
+          ? (language === 'en' ? 'Saving...' : language === 'zh' ? '正在保存...' : 'Đang lưu...') 
+          : (language === 'en' ? 'Save budgets' : language === 'zh' ? '保存预算限制' : 'Lưu hạn mức')
+        }
       </button>
     </div>
   );
