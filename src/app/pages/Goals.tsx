@@ -13,68 +13,7 @@ interface Goal {
   advice: string;
 }
 
-const initialGoals: Goal[] = [
-  {
-    id: 1,
-    icon: '🏍️',
-    name: 'Mua xe máy',
-    target: 50000000,
-    saved: 32000000,
-    deadline: '31/12/2025',
-    color: '#00C896',
-    advice: 'Cần nạp thêm ~3,000,000 ₫/tháng để đạt mục tiêu',
-  },
-  {
-    id: 2,
-    icon: '✈️',
-    name: 'Du lịch Nhật Bản',
-    target: 30000000,
-    saved: 27000000,
-    deadline: '15/09/2025',
-    color: '#FF9F43',
-    advice: 'Sắp đạt mục tiêu! Cần thêm 3,000,000 ₫ nữa',
-  },
-  {
-    id: 3,
-    icon: '🏦',
-    name: 'Quỹ khẩn cấp',
-    target: 20000000,
-    saved: 6000000,
-    deadline: '31/06/2026',
-    color: '#4B9EFF',
-    advice: 'Cần nạp thêm ~2,000,000 ₫/tháng để đạt mục tiêu',
-  },
-  {
-    id: 4,
-    icon: '🏠',
-    name: 'Mua nhà',
-    target: 500000000,
-    saved: 45000000,
-    deadline: '31/12/2030',
-    color: '#7B68EE',
-    advice: 'Hành trình dài — hãy kiên trì, bắt đầu từ 8,000,000 ₫/tháng',
-  },
-  {
-    id: 5,
-    icon: '🎓',
-    name: 'Học thạc sĩ',
-    target: 80000000,
-    saved: 20000000,
-    deadline: '01/09/2026',
-    color: '#FF6B9D',
-    advice: 'Cần nạp thêm ~5,000,000 ₫/tháng để đạt mục tiêu',
-  },
-  {
-    id: 6,
-    icon: '🚗',
-    name: 'Mua ô tô',
-    target: 400000000,
-    saved: 80000000,
-    deadline: '31/12/2027',
-    color: '#00C896',
-    advice: 'Cần nạp thêm ~10,000,000 ₫/tháng để đạt mục tiêu',
-  },
-];
+const initialGoals: Goal[] = [];
 
 function getProgressColor(pct: number) {
   if (pct >= 90) return '#FF9F43';
